@@ -1,0 +1,36 @@
+import { requirePermission } from "@/lib/require-permission";
+import { parseReportRange, getFullAggregates } from "@/lib/reports";
+import { toCsv, csvResponse } from "@/lib/csv";
+
+export async function GET(request: Request) {
+  const user = await requirePermission("report.view");
+  const url = new URL(request.url);
+  const range = parseReportRange(
+    {
+      from: url.searchParams.get("from") ?? undefined,
+      to: url.searchParams.get("to") ?? undefined,
+      storeId: url.searchParams.get("storeId") ?? undefined,
+    },
+    user.storeId
+  );
+
+  const { products } = await getFullAggregates(range);
+  const csv = toCsv(
+    products.map((p) => ({
+      reference: p.reference,
+      nom: p.name,
+      quantite: p.quantity,
+      chiffreAffaires: p.revenue,
+      marge: p.profit,
+    })),
+    [
+      { key: "reference", label: "Reference" },
+      { key: "nom", label: "Produit" },
+      { key: "quantite", label: "Quantite vendue" },
+      { key: "chiffreAffaires", label: "Chiffre d'affaires (FCFA)" },
+      { key: "marge", label: "Marge (FCFA)" },
+    ]
+  );
+
+  return csvResponse(csv, "produits.csv");
+}

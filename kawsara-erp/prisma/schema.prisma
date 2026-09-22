@@ -1,0 +1,570 @@
+// Kawsara Global Business — ERP + e-commerce
+// Modele de donnees base sur la section 50 du cahier des charges.
+// Montants en FCFA (entiers, pas de sous-unite).
+// SQLite en developpement local (Docker/PostgreSQL indisponible sur ce poste) ;
+// pour bascule PostgreSQL : changer provider="postgresql" + DATABASE_URL, le schema est compatible.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Utilisateurs, roles, boutiques ----------
+
+enum Role {
+  ADMIN
+  GERANT
+  CAISSIER
+  MAGASINIER
+  COMPTABLE
+  VENDEUR
+  CLIENT
+}
+
+model Store {
+  id        String   @id @default(cuid())
+  reference String   @unique
+  name      String
+  address   String?
+  phone     String?
+  createdAt DateTime @default(now())
+
+  users          User[]
+  stocks         Stock[]
+  stockMovements StockMovement[]
+  cashRegisters  CashRegister[]
+  sales          Sale[]
+  debits         Debit[]
+  invoices       Invoice[]
+  supplierOrders SupplierOrder[]
+  ecommerceOrders EcommerceOrder[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  reference    String   @unique
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  active       Boolean  @default(true)
+  storeId      String?
+  store        Store?   @relation(fields: [storeId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  customer        Customer?
+  soldSales       Sale[]            @relation("SoldBy")
+  cashSessions    CashSession[]
+  auditLogs       AuditLog[]
+  notifications   Notification[]
+  failedLogins    Int               @default(0)
+  lockedUntil     DateTime?
+  twoFactorSecret  String?
+  twoFactorEnabled Boolean          @default(false)
+}
+
+// ---------- Catalogue ----------
+
+model Category {
+  id       String     @id @default(cuid())
+  name     String
+  parentId String?
+  parent   Category?  @relation("SubCategories", fields: [parentId], references: [id])
+  children Category[] @relation("SubCategories")
+  products Product[]
+}
+
+model Product {
+  id             String   @id @default(cuid())
+  reference      String   @unique
+  name           String
+  description    String?
+  categoryId     String?
+  category       Category? @relation(fields: [categoryId], references: [id])
+  purchasePrice  Int
+  sellingPrice   Int
+  minThreshold   Int      @default(0)
+  supplierId     String?
+  supplier       Supplier? @relation(fields: [supplierId], references: [id])
+  active         Boolean  @default(true)
+  onlineEnabled  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  images              ProductImage[]
+  stocks              Stock[]
+  stockMovements      StockMovement[]
+  saleItems           SaleItem[]
+  debitItems          DebitItem[]
+  invoiceItems        InvoiceItem[]
+  supplierOrderItems   SupplierOrderItem[]
+  supplierReceiptItems SupplierReceiptItem[]
+  ecommerceOrderItems  EcommerceOrderItem[]
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  position  Int     @default(0)
+}
+
+// ---------- Stock ----------
+
+enum StockMovementType {
+  ENTREE
+  SORTIE
+  VENTE
+  RETOUR
+  CORRECTION
+  INVENTAIRE
+  RESERVATION
+  LIBERATION
+  RECEPTION
+}
+
+model Stock {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  storeId   String
+  store     Store   @relation(fields: [storeId], references: [id])
+  quantity  Int     @default(0)
+  reserved  Int     @default(0)
+
+  @@unique([productId, storeId])
+}
+
+model StockMovement {
+  id        String            @id @default(cuid())
+  productId String
+  product   Product           @relation(fields: [productId], references: [id])
+  storeId   String
+  store     Store             @relation(fields: [storeId], references: [id])
+  type      StockMovementType
+  quantity  Int
+  reference String
+  reason    String?
+  userId    String
+  createdAt DateTime          @default(now())
+}
+
+// ---------- Clients ----------
+
+model Customer {
+  id        String   @id @default(cuid())
+  reference String   @unique
+  name      String
+  phone     String?
+  email     String?  @unique
+  address   String?
+  loyal     Boolean  @default(false)
+  userId    String?  @unique
+  user      User?    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  sales           Sale[]
+  debits          Debit[]
+  invoices        Invoice[]
+  debts           CustomerDebt[]
+  ecommerceOrders EcommerceOrder[]
+}
+
+enum DebtStatus {
+  NON_PAYEE
+  PARTIELLEMENT_PAYEE
+  PAYEE
+  EN_RETARD
+  ANNULEE
+}
+
+model CustomerDebt {
+  id               String     @id @default(cuid())
+  reference        String     @unique
+  customerId       String
+  customer         Customer   @relation(fields: [customerId], references: [id])
+  invoiceId        String     @unique
+  invoice          Invoice    @relation(fields: [invoiceId], references: [id])
+  totalAmount      Int
+  paidAmount       Int        @default(0)
+  remainingAmount  Int
+  status           DebtStatus @default(NON_PAYEE)
+  dueDate          DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  payments DebtPayment[]
+}
+
+model DebtPayment {
+  id             String        @id @default(cuid())
+  reference      String        @unique
+  debtId         String
+  debt           CustomerDebt  @relation(fields: [debtId], references: [id])
+  amount         Int
+  method         PaymentMethod
+  cashSessionId  String?
+  cashSession    CashSession?  @relation(fields: [cashSessionId], references: [id])
+  userId         String
+  createdAt      DateTime      @default(now())
+}
+
+// ---------- Fournisseurs ----------
+
+model Supplier {
+  id        String   @id @default(cuid())
+  reference String   @unique
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  createdAt DateTime @default(now())
+
+  products Product[]
+  orders   SupplierOrder[]
+}
+
+enum SupplierOrderStatus {
+  BROUILLON
+  ENVOYEE
+  PARTIELLEMENT_RECUE
+  RECUE
+  ANNULEE
+}
+
+model SupplierOrder {
+  id         String              @id @default(cuid())
+  reference  String              @unique
+  supplierId String
+  supplier   Supplier            @relation(fields: [supplierId], references: [id])
+  storeId    String
+  store      Store               @relation(fields: [storeId], references: [id])
+  status     SupplierOrderStatus @default(BROUILLON)
+  createdAt  DateTime            @default(now())
+
+  items    SupplierOrderItem[]
+  receipts SupplierReceipt[]
+}
+
+model SupplierOrderItem {
+  id                String        @id @default(cuid())
+  orderId           String
+  order             SupplierOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product       @relation(fields: [productId], references: [id])
+  quantity          Int
+  receivedQuantity  Int           @default(0)
+  unitCost          Int
+}
+
+model SupplierReceipt {
+  id        String   @id @default(cuid())
+  reference String   @unique
+  orderId   String
+  order     SupplierOrder @relation(fields: [orderId], references: [id])
+  userId    String
+  createdAt DateTime @default(now())
+
+  items SupplierReceiptItem[]
+}
+
+model SupplierReceiptItem {
+  id        String          @id @default(cuid())
+  receiptId String
+  receipt   SupplierReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product         @relation(fields: [productId], references: [id])
+  quantity  Int
+}
+
+// ---------- Ventes / Debits ----------
+
+enum SaleStatus {
+  VALIDEE
+  ANNULEE
+}
+
+model Sale {
+  id         String     @id @default(cuid())
+  reference  String     @unique
+  storeId    String
+  store      Store      @relation(fields: [storeId], references: [id])
+  customerId String?
+  customer   Customer?  @relation(fields: [customerId], references: [id])
+  sellerId   String
+  seller     User       @relation("SoldBy", fields: [sellerId], references: [id])
+  discount   Int        @default(0)
+  subtotal   Int
+  total      Int
+  status     SaleStatus @default(VALIDEE)
+  createdAt  DateTime   @default(now())
+
+  items   SaleItem[]
+  invoice Invoice?
+}
+
+model SaleItem {
+  id        String  @id @default(cuid())
+  saleId    String
+  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Int
+  discount  Int     @default(0)
+  total     Int
+}
+
+enum DebitStatus {
+  EN_ATTENTE
+  TRANSFORME
+  ANNULE
+}
+
+model Debit {
+  id         String      @id @default(cuid())
+  reference  String      @unique
+  storeId    String
+  store      Store       @relation(fields: [storeId], references: [id])
+  customerId String
+  customer   Customer    @relation(fields: [customerId], references: [id])
+  status     DebitStatus @default(EN_ATTENTE)
+  createdAt  DateTime    @default(now())
+
+  items   DebitItem[]
+  invoice Invoice?
+}
+
+model DebitItem {
+  id        String  @id @default(cuid())
+  debitId   String
+  debit     Debit   @relation(fields: [debitId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Int
+}
+
+// ---------- Facturation / Paiements ----------
+
+enum InvoiceStatus {
+  BROUILLON
+  VALIDEE
+  PAYEE
+  PARTIELLEMENT_PAYEE
+  IMPAYEE
+  ANNULEE
+}
+
+enum InvoiceOrigin {
+  VENTE
+  DEBIT
+  ECOMMERCE
+}
+
+model Invoice {
+  id               String        @id @default(cuid())
+  reference        String        @unique
+  storeId          String
+  store            Store         @relation(fields: [storeId], references: [id])
+  customerId       String?
+  customer         Customer?     @relation(fields: [customerId], references: [id])
+  origin           InvoiceOrigin
+  saleId           String?       @unique
+  sale             Sale?         @relation(fields: [saleId], references: [id])
+  debitId          String?       @unique
+  debit            Debit?        @relation(fields: [debitId], references: [id])
+  ecommerceOrderId String?       @unique
+  ecommerceOrder   EcommerceOrder? @relation(fields: [ecommerceOrderId], references: [id])
+  sellerId         String
+  subtotal         Int
+  discount         Int           @default(0)
+  tax              Int           @default(0)
+  total            Int
+  paidAmount       Int           @default(0)
+  remainingAmount  Int
+  status           InvoiceStatus @default(VALIDEE)
+  cancelReason     String?
+  cancelledById    String?
+  cancelledAt      DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  items   InvoiceItem[]
+  payments Payment[]
+  debt    CustomerDebt?
+}
+
+model InvoiceItem {
+  id        String  @id @default(cuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Int
+  discount  Int     @default(0)
+  total     Int
+}
+
+enum PaymentMethod {
+  ESPECES
+  WAVE
+  ORANGE_MONEY
+  CHEQUE
+  VIREMENT
+  AUTRE
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  reference     String        @unique
+  invoiceId     String
+  invoice       Invoice       @relation(fields: [invoiceId], references: [id])
+  amount        Int
+  method        PaymentMethod
+  cashSessionId String?
+  cashSession   CashSession?  @relation(fields: [cashSessionId], references: [id])
+  userId        String
+  createdAt     DateTime      @default(now())
+}
+
+// ---------- Caisses ----------
+
+enum CashSessionStatus {
+  OUVERTE
+  FERMEE
+}
+
+model CashRegister {
+  id        String   @id @default(cuid())
+  reference String   @unique
+  storeId   String
+  store     Store    @relation(fields: [storeId], references: [id])
+  name      String
+  number    String
+  createdAt DateTime @default(now())
+
+  sessions CashSession[]
+}
+
+model CashSession {
+  id                       String             @id @default(cuid())
+  cashRegisterId           String
+  cashRegister             CashRegister       @relation(fields: [cashRegisterId], references: [id])
+  userId                   String
+  user                     User               @relation(fields: [userId], references: [id])
+  openingBalance           Int
+  closingBalanceDeclared   Int?
+  closingBalanceTheoretical Int?
+  status                   CashSessionStatus  @default(OUVERTE)
+  openedAt                 DateTime           @default(now())
+  closedAt                 DateTime?
+
+  movements    CashMovement[]
+  payments     Payment[]
+  debtPayments DebtPayment[]
+}
+
+enum CashMovementType {
+  ENTREE
+  SORTIE
+}
+
+model CashMovement {
+  id            String           @id @default(cuid())
+  cashSessionId String
+  cashSession   CashSession      @relation(fields: [cashSessionId], references: [id], onDelete: Cascade)
+  type          CashMovementType
+  amount        Int
+  reason        String?
+  createdAt     DateTime         @default(now())
+}
+
+// ---------- E-commerce ----------
+
+enum EcommerceOrderStatus {
+  EN_ATTENTE
+  CONFIRMEE
+  EN_PREPARATION
+  LIVREE
+  ANNULEE
+}
+
+model EcommerceOrder {
+  id               String                @id @default(cuid())
+  reference        String                @unique
+  customerId       String
+  customer         Customer              @relation(fields: [customerId], references: [id])
+  storeId          String?
+  store            Store?                @relation(fields: [storeId], references: [id])
+  status           EcommerceOrderStatus  @default(EN_ATTENTE)
+  subtotal         Int
+  total            Int
+  shippingAddress  String?
+  shippingPhone    String?
+  notes            String?
+  paymentMethod    PaymentMethod?
+  cancelReason     String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  items   EcommerceOrderItem[]
+  invoice Invoice?
+}
+
+model EcommerceOrderItem {
+  id        String         @id @default(cuid())
+  orderId   String
+  order     EcommerceOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product        @relation(fields: [productId], references: [id])
+  quantity  Int
+  unitPrice Int
+}
+
+// ---------- Support ----------
+
+model ReferenceCounter {
+  key   String @id
+  value Int    @default(0)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  type      String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  metadata  String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
+
+model SecurityEvent {
+  id        String   @id @default(cuid())
+  type      String
+  email     String?
+  userId    String?
+  ipAddress String?
+  detail    String?
+  createdAt DateTime @default(now())
+}

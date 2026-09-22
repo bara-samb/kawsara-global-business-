@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <defs>
+    <linearGradient id="bg5" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#14512c"/>
+      <stop offset="100%" stop-color="#0f3d22"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#bg5)"/>
+  <circle cx="200" cy="140" r="55" fill="#fdf8ec"/>
+  <path d="M 210 90 L 165 155 L 195 155 L 185 195 L 235 130 L 200 130 Z" fill="#d4a017"/>
+  <rect x="185" y="192" width="30" height="16" rx="4" fill="#e0b53c"/>
+  <text x="200" y="270" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#fdf8ec">Electricite</text>
+</svg>

@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kawsara
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?definissez POSTGRES_PASSWORD dans .env.docker}
+      POSTGRES_DB: kawsara_erp
+    volumes:
+      - kawsara_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kawsara -d kawsara_erp"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://kawsara:${POSTGRES_PASSWORD:?definissez POSTGRES_PASSWORD dans .env.docker}@db:5432/kawsara_erp
+      AUTH_SECRET: ${AUTH_SECRET:?definissez AUTH_SECRET dans .env.docker (openssl rand -base64 32)}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+    ports:
+      - "3000:3000"
+
+volumes:
+  kawsara_postgres_data:
