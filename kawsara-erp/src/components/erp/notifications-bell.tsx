@@ -3,6 +3,8 @@ import { Bell, Check, CheckCheck, Inbox } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { markNotificationRead, markAllNotificationsRead } from "@/lib/actions/notifications";
+import { getNotificationHref } from "@/lib/notification-links";
+import { NotificationLink } from "@/components/erp/notification-link";
 
 export async function NotificationsBell() {
   const session = await auth();
@@ -49,11 +51,15 @@ export async function NotificationsBell() {
           {recent.map((n) => (
             <li key={n.id} className={`rounded-md p-2 text-xs transition-colors ${n.read ? "bg-white text-gray-500" : "bg-brand-green-50 text-brand-green-900"}`}>
               <div className="flex items-start justify-between gap-2">
-                <div>
+                <NotificationLink
+                  href={getNotificationHref(n.type, n.entityId)}
+                  notificationId={n.id}
+                  className="min-w-0 flex-1 rounded-sm hover:underline"
+                >
                   <p className="font-semibold">{n.title}</p>
                   <p className="mt-0.5">{n.message}</p>
                   <p className="mt-1 text-[10px] text-gray-400">{n.createdAt.toLocaleString("fr-FR")}</p>
-                </div>
+                </NotificationLink>
                 {!n.read && (
                   <form action={markNotificationRead.bind(null, n.id)}>
                     <button className="flex shrink-0 items-center gap-1 text-[10px] font-semibold text-brand-green-700 hover:underline">

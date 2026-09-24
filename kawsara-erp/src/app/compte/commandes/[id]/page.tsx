@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { cancelCustomerEcommerceOrder } from "@/lib/actions/ecommerce";
 
 const STATUS_LABELS: Record<string, string> = {
   EN_ATTENTE: "En attente de confirmation",
@@ -28,6 +29,8 @@ export default async function CommandeDetailPage({
   });
 
   if (!order || order.customerId !== session?.user.customerId) notFound();
+
+  const canCancel = order.status !== "LIVREE" && order.status !== "ANNULEE";
 
   return (
     <div>
@@ -95,6 +98,23 @@ export default async function CommandeDetailPage({
           )}
         </div>
       </div>
+
+      {canCancel && (
+        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4">
+          <p className="text-sm font-semibold text-red-800">Annuler cette commande</p>
+          <p className="mt-1 text-sm text-red-700">
+            La commande sera annulee, la facture sera revoquee et les produits seront remis en stock.
+          </p>
+          <form action={cancelCustomerEcommerceOrder.bind(null, order.id)} className="mt-3">
+            <button
+              type="submit"
+              className="rounded-md border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+            >
+              Annuler la commande
+            </button>
+          </form>
+        </div>
+      )}
 
       <Link href="/compte/commandes" className="mt-6 inline-block text-sm font-semibold text-brand-green-700 hover:text-brand-gold-600">
         ← Toutes mes commandes

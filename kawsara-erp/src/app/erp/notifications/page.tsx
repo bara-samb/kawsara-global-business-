@@ -1,6 +1,9 @@
 import { auth } from "@/lib/auth";
+
 import { prisma } from "@/lib/prisma";
 import { markNotificationRead, markAllNotificationsRead } from "@/lib/actions/notifications";
+import { getNotificationHref } from "@/lib/notification-links";
+import { NotificationLink } from "@/components/erp/notification-link";
 
 export default async function NotificationsPage() {
   const session = await auth();
@@ -35,11 +38,15 @@ export default async function NotificationsPage() {
               n.read ? "border-gray-200 bg-white" : "border-brand-green-200 bg-brand-green-50"
             }`}
           >
-            <div>
+            <NotificationLink
+              href={getNotificationHref(n.type, n.entityId)}
+              notificationId={n.id}
+              className="min-w-0 flex-1 rounded-sm hover:underline"
+            >
               <p className="text-sm font-semibold text-brand-green-900">{n.title}</p>
               <p className="mt-1 text-sm text-gray-600">{n.message}</p>
               <p className="mt-2 text-xs text-gray-400">{n.createdAt.toLocaleString("fr-FR")}</p>
-            </div>
+            </NotificationLink>
             {!n.read && (
               <form action={markNotificationRead.bind(null, n.id)}>
                 <button className="shrink-0 text-xs font-semibold text-brand-green-700 hover:underline">Marquer lu</button>

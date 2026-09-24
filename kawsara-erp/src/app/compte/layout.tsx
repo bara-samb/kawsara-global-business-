@@ -12,7 +12,7 @@ export default async function CompteLayout({ children }: { children: React.React
       <SiteHeader />
       <main className="flex-1">
         <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-green-100 pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-green-100 pb-4 print:hidden">
             <div>
               <h1 className="text-xl font-bold text-brand-green-900">Mon compte</h1>
               {session?.user && <p className="text-sm text-gray-500">{session.user.name} — {session.user.email}</p>}

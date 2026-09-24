@@ -25,7 +25,7 @@ export async function SiteHeader() {
       : { href: "/connexion", label: "Connexion", iconKey: "login" };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-brand-green-100 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-brand-green-100 bg-white/90 backdrop-blur print:hidden">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Link href="/" className="flex items-center gap-2 shrink-0 transition-transform active:scale-95">
           <Image

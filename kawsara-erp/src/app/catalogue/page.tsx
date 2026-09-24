@@ -4,6 +4,7 @@ import { Search, SlidersHorizontal, RotateCcw, PackageSearch } from "lucide-reac
 import { SiteHeader } from "@/components/site/header";
 import { SiteFooter } from "@/components/site/footer";
 import { AddToCartButton } from "@/components/site/add-to-cart-button";
+import { CategoryFilter } from "@/components/site/category-filter";
 import { prisma } from "@/lib/prisma";
 
 function availableStock(stocks: { quantity: number; reserved: number }[]) {
@@ -82,16 +83,11 @@ export default async function CataloguePage({
             </div>
             <div>
               <label className="text-xs font-medium text-brand-green-900">Categorie</label>
-              <select
-                name="categorie"
-                defaultValue={categorie ?? ""}
-                className="mt-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
-              >
-                <option value="">Toutes categories</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+              <CategoryFilter
+                categories={categories}
+                selectedCategory={categorie}
+                query={q}
+              />
             </div>
             <button className="flex items-center gap-1.5 rounded-md bg-brand-green-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-green-800 active:scale-95">
               <SlidersHorizontal className="h-4 w-4" />

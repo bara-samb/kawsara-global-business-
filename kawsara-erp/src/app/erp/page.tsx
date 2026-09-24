@@ -8,6 +8,7 @@ import {
   Receipt,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
@@ -78,12 +79,12 @@ export default async function ErpDashboardPage() {
   const role = session!.user.role;
   const stats = await getStats(session!.user.storeId);
 
-  const cards: { label: string; value: string | number; show: boolean; icon: LucideIcon; accent: string }[] = [
+  const cards: { label: string; value: string | number; show: boolean; icon: LucideIcon; accent: string; href?: string }[] = [
     { label: "Chiffre d'affaires (aujourd'hui)", value: fcfa(stats.revenueToday), show: can(role, "profit.view") || can(role, "report.view"), icon: TrendingUp, accent: "bg-brand-green-100 text-brand-green-700" },
     { label: "Chiffre d'affaires (total)", value: fcfa(stats.revenueTotal), show: can(role, "profit.view"), icon: HandCoins, accent: "bg-brand-gold-100 text-brand-gold-700" },
     { label: "Produits actifs", value: stats.productCount, show: can(role, "product.read"), icon: Package, accent: "bg-blue-100 text-blue-700" },
     { label: "Clients", value: stats.customerCount, show: can(role, "customer.read"), icon: Users, accent: "bg-purple-100 text-purple-700" },
-    { label: "Stock critique", value: stats.criticalStock, show: can(role, "stock.read"), icon: AlertTriangle, accent: "bg-red-100 text-red-700" },
+    { label: "Stock critique", value: stats.criticalStock, show: can(role, "stock.read"), icon: AlertTriangle, accent: "bg-red-100 text-red-700", href: "/erp/stock?critique=1" },
     { label: "Creances clients", value: fcfa(stats.totalDebt), show: can(role, "debt.read"), icon: Wallet, accent: "bg-orange-100 text-orange-700" },
     { label: "Factures", value: stats.invoiceCount, show: can(role, "invoice.read"), icon: Receipt, accent: "bg-teal-100 text-teal-700" },
   ].filter((c) => c.show);
@@ -105,6 +106,20 @@ export default async function ErpDashboardPage() {
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((c, i) => (
+          c.href ? (
+            <Link
+              href={c.href}
+              key={c.label}
+              style={{ animationDelay: `${i * 40}ms` }}
+              className="animate-fade-in-up rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${c.accent}`}>
+                <c.icon className="h-5 w-5" />
+              </div>
+              <p className="mt-3 text-xs font-medium uppercase tracking-wide text-gray-500">{c.label}</p>
+              <p className="mt-1 text-2xl font-bold text-brand-green-900">{c.value}</p>
+            </Link>
+          ) : (
           <div
             key={c.label}
             style={{ animationDelay: `${i * 40}ms` }}
@@ -116,6 +131,7 @@ export default async function ErpDashboardPage() {
             <p className="mt-3 text-xs font-medium uppercase tracking-wide text-gray-500">{c.label}</p>
             <p className="mt-1 text-2xl font-bold text-brand-green-900">{c.value}</p>
           </div>
+          )
         ))}
       </div>
 

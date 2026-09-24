@@ -39,7 +39,10 @@ export default async function VenteDetailPage({
         <div className="grid gap-4 sm:grid-cols-2 text-sm">
           <div>
             <p className="text-xs uppercase text-gray-500">Client</p>
-            <p className="font-medium text-brand-green-900">{sale.customer?.name ?? "Client de passage"}</p>
+            <p className="font-medium text-brand-green-900">{sale.customer?.name ?? sale.customerName ?? "Client de passage"}</p>
+            {sale.customer?.phone ?? sale.customerPhone ? (
+              <p className="text-sm text-gray-500">{sale.customer?.phone ?? sale.customerPhone}</p>
+            ) : null}
           </div>
           <div>
             <p className="text-xs uppercase text-gray-500">Vendeur</p>

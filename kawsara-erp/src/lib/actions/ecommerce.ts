@@ -7,6 +7,7 @@ import { generateReference } from "@/lib/reference";
 import { requirePermission } from "@/lib/require-permission";
 import { parsePaymentOption } from "@/lib/payment-options";
 import { notifyRoles, checkLowStockAndNotify } from "@/lib/notify";
+import { auth } from "@/lib/auth";
 
 // ---------- Boutique publique : passage de commande ----------
 
@@ -132,7 +133,8 @@ export async function createEcommerceOrder(input: CheckoutInput) {
       "NOUVELLE_COMMANDE",
       "Nouvelle commande en ligne",
       `Commande ${order.reference} — ${subtotal.toLocaleString("fr-FR")} FCFA.`,
-      tx
+      tx,
+      order.id
     );
 
     return { id: order.id, reference: order.reference };
@@ -197,21 +199,59 @@ export async function assignEcommerceOrderStore(orderId: string, formData: FormD
 export async function confirmEcommerceOrder(orderId: string) {
   const user = await requirePermission("ecommerceOrder.process");
 
-  const order = await prisma.ecommerceOrder.findUnique({ where: { id: orderId } });
-  if (!order || order.status !== "EN_ATTENTE") {
-    throw new Error("Cette commande ne peut pas etre confirmee dans son etat actuel.");
-  }
-  if (!order.storeId) {
-    throw new Error("Assignez d'abord un depot avant de confirmer la commande.");
-  }
+  await prisma.$transaction(async (tx) => {
+    const order = await tx.ecommerceOrder.findUnique({
+      where: { id: orderId },
+      include: { items: true, invoice: true, customer: true },
+    });
+    if (!order || order.status !== "EN_ATTENTE") {
+      throw new Error("Cette commande ne peut pas etre confirmee dans son etat actuel.");
+    }
+    if (!order.storeId) {
+      throw new Error("Assignez d'abord un depot avant de confirmer la commande.");
+    }
 
-  await prisma.ecommerceOrder.update({ where: { id: orderId }, data: { status: "CONFIRMEE" } });
-  await prisma.auditLog.create({
-    data: { userId: user.id, action: "CONFIRM", entity: "EcommerceOrder", entityId: orderId },
+    // La validation transforme la commande en facture impayee. Le reglement
+    // reste lie a la livraison, comme pour les autres commandes en ligne.
+    if (!order.invoice) {
+      const invoiceReference = await generateReference("invoice", tx);
+      await tx.invoice.create({
+        data: {
+          reference: invoiceReference,
+          storeId: order.storeId,
+          customerId: order.customerId,
+          customerName: order.customer.name,
+          customerPhone: order.shippingPhone ?? order.customer.phone,
+          origin: "ECOMMERCE",
+          ecommerceOrderId: order.id,
+          sellerId: user.id,
+          subtotal: order.subtotal,
+          discount: 0,
+          total: order.total,
+          remainingAmount: order.total,
+          status: "IMPAYEE",
+          items: {
+            create: order.items.map((item) => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              total: item.quantity * item.unitPrice,
+            })),
+          },
+        },
+      });
+    }
+
+    await tx.ecommerceOrder.update({ where: { id: orderId }, data: { status: "CONFIRMEE" } });
+    await tx.auditLog.create({
+      data: { userId: user.id, action: "CONFIRM", entity: "EcommerceOrder", entityId: orderId },
+    });
   });
 
   revalidatePath(`/erp/commandes-en-ligne/${orderId}`);
   revalidatePath("/erp/commandes-en-ligne");
+  revalidatePath("/erp/factures");
+  revalidatePath(`/compte/commandes/${orderId}`);
 }
 
 export async function startPreparationEcommerceOrder(orderId: string) {
@@ -260,37 +300,22 @@ export async function markDeliveredEcommerceOrder(orderId: string, formData: For
   const data = deliverSchema.parse({ paymentOption: formData.get("paymentOption") });
 
   await prisma.$transaction(async (tx) => {
-    const order = await tx.ecommerceOrder.findUnique({ where: { id: orderId }, include: { items: true } });
+    const order = await tx.ecommerceOrder.findUnique({
+      where: { id: orderId },
+      include: { items: true, invoice: true },
+    });
     if (!order || order.status !== "EN_PREPARATION") {
       throw new Error("Cette commande ne peut pas etre marquee livree dans son etat actuel.");
     }
+    if (!order.invoice) {
+      throw new Error("La commande doit etre validee avant d'etre livree.");
+    }
 
     const { method, cashSessionId } = parsePaymentOption(data.paymentOption);
-    const invoiceReference = await generateReference("invoice", tx);
-    const invoice = await tx.invoice.create({
-      data: {
-        reference: invoiceReference,
-        storeId: order.storeId!,
-        customerId: order.customerId,
-        origin: "ECOMMERCE",
-        ecommerceOrderId: order.id,
-        sellerId: user.id,
-        subtotal: order.subtotal,
-        discount: 0,
-        total: order.total,
-        paidAmount: order.total,
-        remainingAmount: 0,
-        status: "PAYEE",
-        items: {
-          create: order.items.map((i) => ({
-            productId: i.productId,
-            quantity: i.quantity,
-            unitPrice: i.unitPrice,
-            total: i.quantity * i.unitPrice,
-          })),
-        },
-      },
-    });
+    const invoice = order.invoice;
+    if (invoice.remainingAmount <= 0) {
+      throw new Error("Cette facture est deja soldee.");
+    }
 
     const paymentReference = await generateReference("payment", tx);
     await tx.payment.create({
@@ -303,6 +328,10 @@ export async function markDeliveredEcommerceOrder(orderId: string, formData: For
         userId: user.id,
       },
     });
+    await tx.invoice.update({
+      where: { id: invoice.id },
+      data: { paidAmount: invoice.total, remainingAmount: 0, status: "PAYEE" },
+    });
 
     await tx.ecommerceOrder.update({ where: { id: orderId }, data: { status: "LIVREE" } });
     await tx.auditLog.create({
@@ -313,6 +342,7 @@ export async function markDeliveredEcommerceOrder(orderId: string, formData: For
   revalidatePath(`/erp/commandes-en-ligne/${orderId}`);
   revalidatePath("/erp/commandes-en-ligne");
   revalidatePath("/erp/factures");
+  revalidatePath(`/compte/commandes/${orderId}`);
 }
 
 const cancelSchema = z.object({ reason: z.string().min(2, "Motif obligatoire.") });
@@ -369,12 +399,108 @@ export async function cancelEcommerceOrder(orderId: string, formData: FormData) 
       where: { id: orderId },
       data: { status: "ANNULEE", cancelReason: data.reason },
     });
+    if (order.invoice && order.invoice.status !== "ANNULEE") {
+      await tx.invoice.update({
+        where: { id: order.invoice.id },
+        data: {
+          status: "ANNULEE",
+          cancelReason: data.reason,
+          cancelledById: user.id,
+          cancelledAt: new Date(),
+        },
+      });
+    }
     await tx.auditLog.create({
       data: { userId: user.id, action: "CANCEL", entity: "EcommerceOrder", entityId: orderId },
     });
   });
 
   revalidatePath(`/erp/commandes-en-ligne/${orderId}`);
+  revalidatePath("/erp/commandes-en-ligne");
+  revalidatePath("/erp/stock");
+}
+
+export async function cancelCustomerEcommerceOrder(orderId: string) {
+  const session = await auth();
+  const customerId = session?.user.customerId;
+  if (!session?.user || session.user.role !== "CLIENT" || !customerId) {
+    throw new Error("Vous devez etre connecte en tant que client.");
+  }
+
+  const reason = "Annulation par le client";
+  await prisma.$transaction(async (tx) => {
+    const order = await tx.ecommerceOrder.findUnique({
+      where: { id: orderId },
+      include: { items: true, invoice: true },
+    });
+    if (!order || order.customerId !== customerId) {
+      throw new Error("Commande introuvable.");
+    }
+    if (order.status === "LIVREE" || order.status === "ANNULEE") {
+      throw new Error("Cette commande ne peut plus etre annulee.");
+    }
+
+    if (order.storeId) {
+      for (const item of order.items) {
+        if (order.status === "EN_PREPARATION") {
+          await tx.stock.update({
+            where: { productId_storeId: { productId: item.productId, storeId: order.storeId } },
+            data: { quantity: { increment: item.quantity } },
+          });
+          await tx.stockMovement.create({
+            data: {
+              productId: item.productId,
+              storeId: order.storeId,
+              type: "RETOUR",
+              quantity: item.quantity,
+              reference: order.reference,
+              reason: "Annulation commande en ligne par le client",
+              userId: session.user.id,
+            },
+          });
+        } else {
+          await tx.stock.update({
+            where: { productId_storeId: { productId: item.productId, storeId: order.storeId } },
+            data: { reserved: { decrement: item.quantity } },
+          });
+          await tx.stockMovement.create({
+            data: {
+              productId: item.productId,
+              storeId: order.storeId,
+              type: "LIBERATION",
+              quantity: item.quantity,
+              reference: order.reference,
+              reason: "Annulation commande en ligne par le client",
+              userId: session.user.id,
+            },
+          });
+        }
+      }
+    }
+
+    await tx.ecommerceOrder.update({
+      where: { id: orderId },
+      data: { status: "ANNULEE", cancelReason: reason },
+    });
+    if (order.invoice && order.invoice.status !== "ANNULEE") {
+      await tx.invoice.update({
+        where: { id: order.invoice.id },
+        data: {
+          status: "ANNULEE",
+          cancelReason: reason,
+          cancelledById: session.user.id,
+          cancelledAt: new Date(),
+        },
+      });
+    }
+    await tx.auditLog.create({
+      data: { userId: session.user.id, action: "CANCEL", entity: "EcommerceOrder", entityId: order.id },
+    });
+  });
+
+  revalidatePath(`/compte/commandes/${orderId}`);
+  revalidatePath("/compte/commandes");
+  revalidatePath("/compte/factures");
   revalidatePath("/erp/commandes-en-ligne");
   revalidatePath("/erp/stock");
 }

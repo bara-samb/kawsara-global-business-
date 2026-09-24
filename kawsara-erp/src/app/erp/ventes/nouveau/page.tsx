@@ -3,6 +3,7 @@ import { createSale } from "@/lib/actions/sales";
 import { getPaymentOptions } from "@/lib/payment-options";
 import { LineItemsEditor } from "@/components/erp/line-items-editor";
 import { DepotSwitcher } from "@/components/erp/depot-switcher";
+import { CustomerAutocomplete } from "@/components/erp/customer-autocomplete";
 
 export default async function NouvelleVentePage({
   searchParams,
@@ -13,7 +14,7 @@ export default async function NouvelleVentePage({
 
   const [stores, customers, paymentOptions] = await Promise.all([
     prisma.store.findMany({ orderBy: { name: "asc" } }),
-    prisma.customer.findMany({ orderBy: { name: "asc" } }),
+    prisma.customer.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, reference: true, phone: true } }),
     getPaymentOptions(prisma),
   ]);
 
@@ -42,15 +43,7 @@ export default async function NouvelleVentePage({
       <form action={createSale} className="mt-6 space-y-4 rounded-xl border border-gray-200 bg-white p-6">
         <div className="grid grid-cols-2 gap-4">
           <DepotSwitcher stores={stores} currentStoreId={storeId} />
-          <div>
-            <label className="text-sm font-medium text-brand-green-900">Client (optionnel)</label>
-            <select name="customerId" className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
-              <option value="">— Client de passage —</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>{c.name} ({c.reference})</option>
-              ))}
-            </select>
-          </div>
+          <CustomerAutocomplete customers={customers} />
         </div>
 
         <LineItemsEditor products={lineItemProducts} priceLabel="Prix de vente" />

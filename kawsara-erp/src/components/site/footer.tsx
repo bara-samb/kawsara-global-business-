@@ -6,7 +6,7 @@ const LINK_STYLE =
 
 export function SiteFooter() {
   return (
-    <footer className="mt-auto border-t border-brand-green-100 bg-brand-green-900 text-brand-green-50">
+    <footer className="mt-auto border-t border-brand-green-100 bg-brand-green-900 text-brand-green-50 print:hidden">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-3">
         <div>
           <p className="text-lg font-extrabold">KAWSARA <span className="text-brand-gold-400">GLOBAL BUSINESS</span></p>

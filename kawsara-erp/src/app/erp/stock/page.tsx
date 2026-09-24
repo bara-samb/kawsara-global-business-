@@ -4,7 +4,13 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { adjustStock } from "@/lib/actions/stores";
 
-export default async function StockPage() {
+export default async function StockPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ critique?: string }>;
+}) {
+  const { critique } = await searchParams;
+  const showCriticalOnly = critique === "1";
   const session = await auth();
   const role = session!.user.role;
 
@@ -18,12 +24,23 @@ export default async function StockPage() {
     },
   });
 
+  const visibleStores = stores
+    .map((store) => ({
+      ...store,
+      stocks: showCriticalOnly
+        ? store.stocks.filter((stock) => stock.quantity <= stock.product.minThreshold)
+        : store.stocks,
+    }))
+    .filter((store) => !showCriticalOnly || store.stocks.length > 0);
+
   return (
     <div className="max-w-5xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-brand-green-900">Depots &amp; stock</h1>
-          <p className="text-sm text-gray-500">{stores.length} depot(s)</p>
+          <p className="text-sm text-gray-500">
+            {showCriticalOnly ? "Produits avec stock critique" : `${stores.length} depot(s)`}
+          </p>
         </div>
         {can(role, "store.create") && (
           <Link href="/erp/stock/nouveau-depot" className="rounded-md bg-brand-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-green-800">
@@ -32,7 +49,7 @@ export default async function StockPage() {
         )}
       </div>
 
-      {stores.map((store) => (
+      {visibleStores.map((store) => (
         <div key={store.id} className="rounded-xl border border-gray-200 bg-white p-6">
           <h2 className="font-semibold text-brand-green-900">{store.name}</h2>
           <p className="text-xs text-gray-500">{store.reference} — {store.address ?? "Adresse non renseignee"}</p>
@@ -111,7 +128,11 @@ export default async function StockPage() {
         </div>
       ))}
 
-      {stores.length === 0 && <p className="text-sm text-gray-400">Aucun depot enregistre.</p>}
+      {visibleStores.length === 0 && (
+        <p className="text-sm text-gray-400">
+          {showCriticalOnly ? "Aucun stock critique." : "Aucun depot enregistre."}
+        </p>
+      )}
     </div>
   );
 }

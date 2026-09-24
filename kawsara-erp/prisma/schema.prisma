@@ -59,6 +59,7 @@ model User {
 
   customer        Customer?
   soldSales       Sale[]            @relation("SoldBy")
+  soldInvoices    Invoice[]         @relation("InvoiceSoldBy")
   cashSessions    CashSession[]
   auditLogs       AuditLog[]
   notifications   Notification[]
@@ -297,6 +298,8 @@ model Sale {
   store      Store      @relation(fields: [storeId], references: [id])
   customerId String?
   customer   Customer?  @relation(fields: [customerId], references: [id])
+  customerName String?
+  customerPhone String?
   sellerId   String
   seller     User       @relation("SoldBy", fields: [sellerId], references: [id])
   discount   Int        @default(0)
@@ -375,6 +378,8 @@ model Invoice {
   store            Store         @relation(fields: [storeId], references: [id])
   customerId       String?
   customer         Customer?     @relation(fields: [customerId], references: [id])
+  customerName     String?
+  customerPhone    String?
   origin           InvoiceOrigin
   saleId           String?       @unique
   sale             Sale?         @relation(fields: [saleId], references: [id])
@@ -383,6 +388,7 @@ model Invoice {
   ecommerceOrderId String?       @unique
   ecommerceOrder   EcommerceOrder? @relation(fields: [ecommerceOrderId], references: [id])
   sellerId         String
+  seller           User          @relation("InvoiceSoldBy", fields: [sellerId], references: [id])
   subtotal         Int
   discount         Int           @default(0)
   tax              Int           @default(0)
@@ -541,6 +547,7 @@ model Notification {
   userId    String?
   user      User?    @relation(fields: [userId], references: [id])
   type      String
+  entityId  String?
   title     String
   message   String
   read      Boolean  @default(false)

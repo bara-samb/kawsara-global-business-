@@ -13,6 +13,7 @@ export type LineItemProduct = {
 type Row = {
   key: number;
   productId: string;
+  productQuery: string;
   quantity: number;
   unitPrice: number;
 };
@@ -29,11 +30,14 @@ export function LineItemsEditor({
   fieldName?: string;
 }) {
   const [rows, setRows] = useState<Row[]>(() => [
-    { key: rowKeySeq++, productId: "", quantity: 1, unitPrice: 0 },
+    { key: rowKeySeq++, productId: "", productQuery: "", quantity: 1, unitPrice: 0 },
   ]);
 
   function addRow() {
-    setRows((r) => [...r, { key: rowKeySeq++, productId: "", quantity: 1, unitPrice: 0 }]);
+    setRows((r) => [
+      ...r,
+      { key: rowKeySeq++, productId: "", productQuery: "", quantity: 1, unitPrice: 0 },
+    ]);
   }
 
   function removeRow(key: number) {
@@ -44,9 +48,15 @@ export function LineItemsEditor({
     setRows((r) => r.map((row) => (row.key === key ? { ...row, ...patch } : row)));
   }
 
-  function onProductChange(key: number, productId: string) {
-    const product = products.find((p) => p.id === productId);
-    updateRow(key, { productId, unitPrice: product?.price ?? 0 });
+  function onProductChange(key: number, productQuery: string) {
+    const product = products.find(
+      (p) => `${p.name} (${p.reference})` === productQuery || p.id === productQuery,
+    );
+    updateRow(key, {
+      productQuery,
+      productId: product?.id ?? "",
+      unitPrice: product?.price ?? 0,
+    });
   }
 
   const validRows = rows.filter((r) => r.productId && r.quantity > 0);
@@ -78,18 +88,19 @@ export function LineItemsEditor({
               return (
                 <tr key={row.key}>
                   <td className="px-3 py-2">
-                    <select
-                      value={row.productId}
+                    <input
+                      value={row.productQuery}
                       onChange={(e) => onProductChange(row.key, e.target.value)}
+                      list={`sale-products-${row.key}`}
+                      placeholder="Rechercher un produit..."
+                      autoComplete="off"
                       className="w-full min-w-[220px] rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                    >
-                      <option value="">— Choisir un produit —</option>
+                    />
+                    <datalist id={`sale-products-${row.key}`}>
                       {products.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} ({p.reference})
-                        </option>
+                        <option key={p.id} value={`${p.name} (${p.reference})`} />
                       ))}
-                    </select>
+                    </datalist>
                     {product && product.availableStock !== undefined && (
                       <p className="mt-1 text-xs text-gray-400">Stock disponible : {product.availableStock}</p>
                     )}

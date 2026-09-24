@@ -49,6 +49,7 @@ export default async function MesFacturesPage() {
             <th className="px-4 py-3">Total</th>
             <th className="px-4 py-3">Reste</th>
             <th className="px-4 py-3">Statut</th>
+            <th className="px-4 py-3">Document</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
@@ -70,6 +71,18 @@ export default async function MesFacturesPage() {
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[inv.status]}`}>
                   {STATUS_LABELS[inv.status]}
                 </span>
+              </td>
+              <td className="px-4 py-3">
+                {inv.status === "PAYEE" && inv.remainingAmount === 0 ? (
+                  <Link
+                    href={`/compte/factures/${inv.id}`}
+                    className="whitespace-nowrap text-xs font-semibold text-brand-green-700 hover:underline"
+                  >
+                    Télécharger PDF
+                  </Link>
+                ) : (
+                  <span className="text-xs text-gray-400">Après règlement</span>
+                )}
               </td>
             </tr>
           ))}

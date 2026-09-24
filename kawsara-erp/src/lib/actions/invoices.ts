@@ -70,7 +70,8 @@ export async function addInvoicePayment(invoiceId: string, formData: FormData) {
         "PAIEMENT_RECU",
         "Facture soldee",
         `Facture ${invoice.reference} entierement payee (${invoice.total.toLocaleString("fr-FR")} FCFA).`,
-        tx
+        tx,
+        invoice.id
       );
     }
   });

@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { getPaymentOptions } from "@/lib/payment-options";
+import { PrintButton } from "@/components/erp/print-button";
 import {
   assignEcommerceOrderStore,
   confirmEcommerceOrder,
@@ -50,9 +51,12 @@ export default async function CommandeEnLigneDetailPage({ params }: { params: Pr
           <h1 className="text-xl font-bold text-brand-green-900">Commande {order.reference}</h1>
           <p className="text-sm text-gray-500">{order.customer.name} — {order.createdAt.toLocaleString("fr-FR")}</p>
         </div>
-        <span className="rounded-full bg-brand-green-100 px-3 py-1 text-sm font-semibold text-brand-green-700">
-          {STATUS_LABELS[order.status]}
-        </span>
+        <div className="flex items-center gap-2">
+          {order.invoice && <PrintButton />}
+          <span className="rounded-full bg-brand-green-100 px-3 py-1 text-sm font-semibold text-brand-green-700">
+            {STATUS_LABELS[order.status]}
+          </span>
+        </div>
       </div>
 
       <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
@@ -90,9 +94,18 @@ export default async function CommandeEnLigneDetailPage({ params }: { params: Pr
           <p className="text-sm font-semibold text-brand-green-900">Total</p>
           <p className="mt-2 text-2xl font-bold text-brand-green-800">{order.total.toLocaleString("fr-FR")} FCFA</p>
           {order.invoice && (
-            <p className="mt-2 text-xs text-gray-500">
-              Facture : <Link href={`/erp/factures/${order.invoice.id}`} className="text-brand-green-700 hover:underline">{order.invoice.reference}</Link>
-            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+              <span>Facture :</span>
+              <Link href={`/erp/factures/${order.invoice.id}`} className="font-semibold text-brand-green-700 hover:underline">
+                {order.invoice.reference}
+              </Link>
+              <Link
+                href={`/erp/factures/${order.invoice.id}`}
+                className="rounded-md border border-brand-green-200 px-2 py-1 font-semibold text-brand-green-700 hover:bg-brand-green-50"
+              >
+                Ouvrir / telecharger PDF
+              </Link>
+            </div>
           )}
           {order.status === "ANNULEE" && order.cancelReason && (
             <p className="mt-2 text-xs text-red-600">Motif : {order.cancelReason}</p>
@@ -124,7 +137,7 @@ export default async function CommandeEnLigneDetailPage({ params }: { params: Pr
           {order.status === "EN_ATTENTE" && order.storeId && (
             <form action={confirmAction}>
               <button className="rounded-md bg-brand-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-green-800">
-                Confirmer la commande
+                Valider la commande et generer la facture
               </button>
             </form>
           )}
@@ -159,7 +172,7 @@ export default async function CommandeEnLigneDetailPage({ params }: { params: Pr
               <input name="reason" required className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
             </div>
             <button className="rounded-md border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">
-              Annuler la commande
+              {order.status === "EN_ATTENTE" ? "Rejeter la commande" : "Annuler la commande"}
             </button>
           </form>
         </div>

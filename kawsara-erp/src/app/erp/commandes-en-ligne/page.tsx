@@ -66,13 +66,16 @@ export default async function CommandesEnLignePage({
               <th className="px-4 py-3">Articles</th>
               <th className="px-4 py-3">Total</th>
               <th className="px-4 py-3">Statut</th>
+              <th className="px-4 py-3">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {orders.map((o) => (
               <tr key={o.id} className="hover:bg-brand-green-50/50">
                 <td className="px-4 py-3 font-mono text-xs text-gray-500">
-                  <Link href={`/erp/commandes-en-ligne/${o.id}`} className="hover:text-brand-gold-600">{o.reference}</Link>
+                  <Link href={`/erp/commandes-en-ligne/${o.id}`} className="hover:text-brand-gold-600">
+                    {o.reference}
+                  </Link>
                 </td>
                 <td className="px-4 py-3">{o.createdAt.toLocaleString("fr-FR")}</td>
                 <td className="px-4 py-3">{o.customer.name}</td>
@@ -84,10 +87,18 @@ export default async function CommandesEnLignePage({
                     {STATUS_LABELS[o.status]}
                   </span>
                 </td>
+                <td className="px-4 py-3">
+                  <Link
+                    href={`/erp/commandes-en-ligne/${o.id}`}
+                    className="whitespace-nowrap rounded-md bg-brand-green-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-green-800"
+                  >
+                    Voir / traiter
+                  </Link>
+                </td>
               </tr>
             ))}
             {orders.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">Aucune commande.</td></tr>
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">Aucune commande.</td></tr>
             )}
           </tbody>
         </table>

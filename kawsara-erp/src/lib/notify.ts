@@ -8,9 +8,9 @@ type TxClient = PrismaClient | Prisma.TransactionClient;
  * Notifications metier (cahier des charges section 49). Best-effort : une notification qui
  * echoue ne doit jamais faire echouer l'operation metier qui l'a declenchee.
  */
-export async function notifyUser(userId: string, type: string, title: string, message: string, tx: TxClient = prisma) {
+export async function notifyUser(userId: string, type: string, title: string, message: string, tx: TxClient = prisma, entityId?: string) {
   try {
-    await tx.notification.create({ data: { userId, type, title, message } });
+    await tx.notification.create({ data: { userId, type, title, message, entityId } });
   } catch {
     // Non-bloquant.
   }
@@ -21,13 +21,14 @@ export async function notifyRoles(
   type: string,
   title: string,
   message: string,
-  tx: TxClient = prisma
+  tx: TxClient = prisma,
+  entityId?: string
 ) {
   try {
     const users = await tx.user.findMany({ where: { role: { in: roles }, active: true }, select: { id: true } });
     if (users.length === 0) return;
     await tx.notification.createMany({
-      data: users.map((u) => ({ userId: u.id, type, title, message })),
+      data: users.map((u) => ({ userId: u.id, type, title, message, entityId })),
     });
   } catch {
     // Non-bloquant.
@@ -52,7 +53,8 @@ export async function checkLowStockAndNotify(
         "STOCK_BAS",
         stock.quantity <= 0 ? "Rupture de stock" : "Stock bas",
         `${product.name} — ${stock.quantity} unite(s) restante(s) (seuil ${product.minThreshold}) a ${store?.name ?? ""}`,
-        tx
+        tx,
+        product.id
       );
     }
   } catch {

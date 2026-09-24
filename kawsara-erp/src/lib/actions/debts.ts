@@ -85,7 +85,8 @@ export async function settleDebt(debtId: string, formData: FormData) {
         "DETTE_SOLDEE",
         "Dette soldee",
         `${customer?.name ?? "Client"} a solde sa dette ${debt.reference}.`,
-        tx
+        tx,
+        debt.id
       );
     }
   });

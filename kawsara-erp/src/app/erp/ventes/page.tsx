@@ -47,7 +47,7 @@ export default async function VentesPage() {
                   <Link href={`/erp/ventes/${s.id}`} className="hover:text-brand-gold-600">{s.reference}</Link>
                 </td>
                 <td className="px-4 py-3">{new Date(s.createdAt).toLocaleString("fr-FR")}</td>
-                <td className="px-4 py-3">{s.customer?.name ?? "Client de passage"}</td>
+                <td className="px-4 py-3">{s.customer?.name ?? s.customerName ?? "Client de passage"}</td>
                 <td className="px-4 py-3">{s.seller.name}</td>
                 <td className="px-4 py-3">{s.store.name}</td>
                 <td className="px-4 py-3 font-semibold">{s.total.toLocaleString("fr-FR")} FCFA</td>
