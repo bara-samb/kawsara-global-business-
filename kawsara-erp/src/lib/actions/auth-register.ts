@@ -8,6 +8,8 @@ import { prisma } from "@/lib/prisma";
 import { generateReference } from "@/lib/reference";
 import { signIn } from "@/lib/auth";
 import { verifyCaptcha } from "@/lib/captcha";
+import type { ActionResult } from "@/lib/errors";
+import { runAction } from "@/lib/run-action";
 
 const registerSchema = z.object({
   name: z.string().min(2, "Le nom est obligatoire."),
@@ -17,64 +19,69 @@ const registerSchema = z.object({
   password: z.string().min(8, "Le mot de passe doit contenir au moins 8 caracteres."),
 });
 
-export async function registerCustomer(formData: FormData) {
-  const captchaOk = verifyCaptcha(
-    String(formData.get("captchaA") ?? ""),
-    String(formData.get("captchaB") ?? ""),
-    String(formData.get("captchaExpires") ?? ""),
-    String(formData.get("captchaToken") ?? ""),
-    String(formData.get("captchaAnswer") ?? "")
-  );
-  if (!captchaOk) {
-    redirect("/inscription?erreur=captcha");
-  }
-
-  const data = registerSchema.parse({
-    name: formData.get("name"),
-    email: formData.get("email"),
-    phone: formData.get("phone") || undefined,
-    address: formData.get("address") || undefined,
-    password: formData.get("password"),
-  });
-
-  const email = data.email.toLowerCase();
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    redirect("/inscription?erreur=email");
-  }
-
-  const passwordHash = await bcrypt.hash(data.password, 10);
-
-  await prisma.$transaction(async (tx) => {
-    const userReference = await generateReference("user", tx);
-    const user = await tx.user.create({
-      data: {
-        reference: userReference,
-        name: data.name,
-        email,
-        passwordHash,
-        role: "CLIENT",
-      },
-    });
-    const customerReference = await generateReference("customer", tx);
-    await tx.customer.create({
-      data: {
-        reference: customerReference,
-        name: data.name,
-        email,
-        phone: data.phone,
-        address: data.address,
-        userId: user.id,
-      },
-    });
-  });
-
-  try {
-    await signIn("credentials", { email, password: data.password, redirectTo: "/compte/commandes" });
-  } catch (error) {
-    if (error instanceof AuthError) {
-      redirect("/connexion");
+export async function registerCustomer(formData: FormData): Promise<ActionResult> {
+  return runAction(async () => {
+    const captchaOk = verifyCaptcha(
+      String(formData.get("captchaA") ?? ""),
+      String(formData.get("captchaB") ?? ""),
+      String(formData.get("captchaExpires") ?? ""),
+      String(formData.get("captchaToken") ?? ""),
+      String(formData.get("captchaAnswer") ?? "")
+    );
+    if (!captchaOk) {
+      redirect("/inscription?erreur=captcha");
     }
-    throw error;
-  }
+
+    const data = registerSchema.parse({
+      name: formData.get("name"),
+      email: formData.get("email"),
+      phone: formData.get("phone") || undefined,
+      address: formData.get("address") || undefined,
+      password: formData.get("password"),
+    });
+
+    const email = data.email.toLowerCase();
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      redirect("/inscription?erreur=email");
+    }
+
+    const passwordHash = await bcrypt.hash(data.password, 10);
+
+    await prisma.$transaction(async (tx) => {
+      const userReference = await generateReference("user", tx);
+      const user = await tx.user.create({
+        data: {
+          reference: userReference,
+          name: data.name,
+          email,
+          passwordHash,
+          role: "CLIENT",
+        },
+      });
+      const customerReference = await generateReference("customer", tx);
+      await tx.customer.create({
+        data: {
+          reference: customerReference,
+          name: data.name,
+          email,
+          phone: data.phone,
+          address: data.address,
+          userId: user.id,
+        },
+      });
+      await tx.auditLog.create({
+        data: { userId: user.id, action: "REGISTER", entity: "User", entityId: user.id },
+      });
+    });
+
+    try {
+      await signIn("credentials", { email, password: data.password, redirectTo: "/compte/commandes" });
+    } catch (error) {
+      if (error instanceof AuthError) {
+        redirect("/connexion");
+      }
+      throw error;
+    }
+  });
 }

@@ -51,6 +51,9 @@ model User {
   email        String   @unique
   passwordHash String
   role         Role
+  // Admin principal : seul compte autorise a executer les actions dangereuses
+  // (voir PRINCIPAL_ADMIN_ONLY dans src/lib/permissions.ts). Un seul compte doit l'avoir.
+  isPrincipalAdmin Boolean @default(false)
   active       Boolean  @default(true)
   storeId      String?
   store        Store?   @relation(fields: [storeId], references: [id])
@@ -67,6 +70,8 @@ model User {
   lockedUntil     DateTime?
   twoFactorSecret  String?
   twoFactorEnabled Boolean          @default(false)
+  // Dernier pas de temps TOTP accepte : empeche de reutiliser un code 2FA deja utilise.
+  twoFactorLastCounter Int?
 }
 
 // ---------- Catalogue ----------
@@ -152,7 +157,8 @@ model StockMovement {
   quantity  Int
   reference String
   reason    String?
-  userId    String
+  // null = commande en ligne passee sans compte (l'auteur est alors le client, voir AuditLog.metadata)
+  userId    String?
   createdAt DateTime          @default(now())
 }
 

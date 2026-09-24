@@ -14,6 +14,10 @@ vi.mock("next/navigation", () => ({
     (err as { digest?: string }).digest = `NEXT_REDIRECT;replace;${url};307;`;
     throw err;
   },
+  // Comme le vrai unstable_rethrow : laisse passer les redirections interceptees par runAction.
+  unstable_rethrow: (error: unknown) => {
+    if (String((error as { digest?: string })?.digest ?? "").startsWith("NEXT_REDIRECT")) throw error;
+  },
 }));
 
 const { registerCustomer } = await import("@/lib/actions/auth-register");

@@ -4,12 +4,15 @@ import { getPaymentOptions } from "@/lib/payment-options";
 import { LineItemsEditor } from "@/components/erp/line-items-editor";
 import { DepotSwitcher } from "@/components/erp/depot-switcher";
 import { CustomerAutocomplete } from "@/components/erp/customer-autocomplete";
+import { ActionForm } from "@/components/action-form";
+import { requirePagePermission } from "@/lib/require-permission";
 
 export default async function NouvelleVentePage({
   searchParams,
 }: {
   searchParams: Promise<{ storeId?: string }>;
 }) {
+  await requirePagePermission("sale.create");
   const { storeId: storeIdParam } = await searchParams;
 
   const [stores, customers, paymentOptions] = await Promise.all([
@@ -40,7 +43,7 @@ export default async function NouvelleVentePage({
   return (
     <div className="max-w-3xl">
       <h1 className="text-xl font-bold text-brand-green-900">Nouvelle vente</h1>
-      <form action={createSale} className="mt-6 space-y-4 rounded-xl border border-gray-200 bg-white p-6">
+      <ActionForm action={createSale} className="mt-6 space-y-4 rounded-xl border border-gray-200 bg-white p-6">
         <div className="grid grid-cols-2 gap-4">
           <DepotSwitcher stores={stores} currentStoreId={storeId} />
           <CustomerAutocomplete customers={customers} />
@@ -70,7 +73,7 @@ export default async function NouvelleVentePage({
         <button type="submit" className="rounded-md bg-brand-green-700 px-5 py-2.5 font-semibold text-white hover:bg-brand-green-800">
           Enregistrer la vente
         </button>
-      </form>
+      </ActionForm>
     </div>
   );
 }

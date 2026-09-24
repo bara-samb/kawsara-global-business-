@@ -3,6 +3,8 @@ import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { getPaymentOptions } from "@/lib/payment-options";
 import { settleDebt } from "@/lib/actions/debts";
+import { ActionForm } from "@/components/action-form";
+import { requirePagePermission } from "@/lib/require-permission";
 
 const STATUS_STYLES: Record<string, string> = {
   PAYEE: "bg-brand-green-100 text-brand-green-700",
@@ -25,6 +27,7 @@ export default async function DettesPage({
 }: {
   searchParams: Promise<{ statut?: string }>;
 }) {
+  await requirePagePermission("debt.read");
   const { statut } = await searchParams;
   const session = await auth();
   const role = session!.user.role;
@@ -96,7 +99,7 @@ export default async function DettesPage({
                   {canSettle && (
                     <td className="px-4 py-3">
                       {debt.remainingAmount > 0 ? (
-                        <form action={settle} className="flex flex-wrap items-center gap-1.5">
+                        <ActionForm action={settle} className="flex flex-wrap items-center gap-1.5">
                           <input
                             type="number"
                             name="amount"
@@ -113,7 +116,7 @@ export default async function DettesPage({
                           <button className="rounded-md bg-brand-green-700 px-2 py-1 text-xs font-semibold text-white hover:bg-brand-green-800">
                             Encaisser
                           </button>
-                        </form>
+                        </ActionForm>
                       ) : (
                         <span className="text-xs text-gray-400">Soldee</span>
                       )}

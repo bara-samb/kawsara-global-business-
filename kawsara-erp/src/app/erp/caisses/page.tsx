@@ -2,8 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { openCashSession, closeCashSession } from "@/lib/actions/cash";
+import { ActionForm } from "@/components/action-form";
+import { requirePagePermission } from "@/lib/require-permission";
 
 export default async function CaissesPage() {
+  await requirePagePermission("cash.view");
   const session = await auth();
   const role = session!.user.role;
 
@@ -46,7 +49,7 @@ export default async function CaissesPage() {
 
             {openSession ? (
               can(role, "cash.close") && (
-                <form action={closeCashSession.bind(null, openSession.id)} className="mt-4 flex items-end gap-3">
+                <ActionForm action={closeCashSession.bind(null, openSession.id)} className="mt-4 flex items-end gap-3">
                   <div>
                     <label className="text-sm font-medium text-brand-green-900">Solde declare a la fermeture (FCFA)</label>
                     <input
@@ -61,11 +64,11 @@ export default async function CaissesPage() {
                   <button type="submit" className="rounded-md bg-brand-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-green-800">
                     Fermer la caisse
                   </button>
-                </form>
+                </ActionForm>
               )
             ) : (
               can(role, "cash.open") && (
-                <form action={openCashSession} className="mt-4 flex items-end gap-3">
+                <ActionForm action={openCashSession} className="mt-4 flex items-end gap-3">
                   <input type="hidden" name="cashRegisterId" value={reg.id} />
                   <div>
                     <label className="text-sm font-medium text-brand-green-900">Solde d&apos;ouverture (FCFA)</label>
@@ -81,7 +84,7 @@ export default async function CaissesPage() {
                   <button type="submit" className="rounded-md bg-brand-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-green-800">
                     Ouvrir la caisse
                   </button>
-                </form>
+                </ActionForm>
               )
             )}
 

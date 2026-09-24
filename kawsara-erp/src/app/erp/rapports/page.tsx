@@ -10,6 +10,7 @@ import {
 } from "@/lib/reports";
 import { RevenueChart } from "@/components/erp/revenue-chart";
 import { PrintButton } from "@/components/erp/print-button";
+import { requirePagePermission } from "@/lib/require-permission";
 
 function ExportLink({ href, label }: { href: string; label: string }) {
   return (
@@ -36,6 +37,7 @@ export default async function RapportsPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string; storeId?: string }>;
 }) {
+  await requirePagePermission("report.view");
   const params = await searchParams;
   const session = await auth();
   const forcedStoreId = session!.user.storeId;

@@ -3,15 +3,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, X, Home, Store, Info, Phone, LayoutDashboard, User, LogIn } from "lucide-react";
+import { Menu, X, Home, Store, Info, Phone, LayoutDashboard } from "lucide-react";
 
-export type SiteIconKey = "home" | "catalogue" | "about" | "contact" | "dashboard" | "account" | "login";
+export type SiteIconKey = "home" | "catalogue" | "about" | "contact" | "dashboard";
 export type SiteNavItem = { href: string; label: string; iconKey: SiteIconKey };
 
 // Les composants d'icones ne sont pas serialisables a travers la frontiere Server -> Client
 // (voir src/app/erp/nav.ts pour la meme contrainte cote ERP) : seule la cle textuelle est
 // transmise depuis header.tsx, la resolution se fait ici, cote client.
-const ICONS = { home: Home, catalogue: Store, about: Info, contact: Phone, dashboard: LayoutDashboard, account: User, login: LogIn };
+const ICONS = { home: Home, catalogue: Store, about: Info, contact: Phone, dashboard: LayoutDashboard };
 
 export function MobileMenu({ items }: { items: SiteNavItem[] }) {
   const [open, setOpen] = useState(false);

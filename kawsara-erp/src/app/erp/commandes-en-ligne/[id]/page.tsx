@@ -12,6 +12,8 @@ import {
   markDeliveredEcommerceOrder,
   cancelEcommerceOrder,
 } from "@/lib/actions/ecommerce";
+import { ActionForm } from "@/components/action-form";
+import { requirePagePermission } from "@/lib/require-permission";
 
 const STATUS_LABELS: Record<string, string> = {
   EN_ATTENTE: "En attente",
@@ -22,10 +24,13 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default async function CommandeEnLigneDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePagePermission("ecommerceOrder.read");
   const { id } = await params;
   const session = await auth();
   const role = session!.user.role;
+  const isPrincipalAdmin = session!.user.isPrincipalAdmin;
   const canProcess = can(role, "ecommerceOrder.process");
+  const canCancel = can(role, "ecommerceOrder.cancel", isPrincipalAdmin);
 
   const order = await prisma.ecommerceOrder.findUnique({
     where: { id },
@@ -118,7 +123,7 @@ export default async function CommandeEnLigneDetailPage({ params }: { params: Pr
           <p className="text-sm font-semibold text-brand-green-900">Traitement</p>
 
           {order.status === "EN_ATTENTE" && !order.storeId && (
-            <form action={assignAction} className="flex flex-wrap items-end gap-2">
+            <ActionForm action={assignAction} className="flex flex-wrap items-end gap-2">
               <div>
                 <label className="text-xs font-medium text-brand-green-900">Assigner un depot</label>
                 <select name="storeId" required className="mt-1 rounded-md border border-gray-300 px-3 py-2 text-sm">
@@ -131,27 +136,27 @@ export default async function CommandeEnLigneDetailPage({ params }: { params: Pr
               <button className="rounded-md bg-brand-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-green-800">
                 Assigner
               </button>
-            </form>
+            </ActionForm>
           )}
 
           {order.status === "EN_ATTENTE" && order.storeId && (
-            <form action={confirmAction}>
+            <ActionForm action={confirmAction}>
               <button className="rounded-md bg-brand-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-green-800">
                 Valider la commande et generer la facture
               </button>
-            </form>
+            </ActionForm>
           )}
 
           {order.status === "CONFIRMEE" && (
-            <form action={prepareAction}>
+            <ActionForm action={prepareAction}>
               <button className="rounded-md bg-brand-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-green-800">
                 Debuter la preparation
               </button>
-            </form>
+            </ActionForm>
           )}
 
           {order.status === "EN_PREPARATION" && (
-            <form action={deliverAction} className="flex flex-wrap items-end gap-2">
+            <ActionForm action={deliverAction} className="flex flex-wrap items-end gap-2">
               <div>
                 <label className="text-xs font-medium text-brand-green-900">Mode d&apos;encaissement</label>
                 <select name="paymentOption" required className="mt-1 rounded-md border border-gray-300 px-3 py-2 text-sm">
@@ -163,18 +168,28 @@ export default async function CommandeEnLigneDetailPage({ params }: { params: Pr
               <button className="rounded-md bg-brand-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-green-800">
                 Marquer livree &amp; facturer
               </button>
-            </form>
+            </ActionForm>
           )}
 
-          <form action={cancelAction} className="flex flex-wrap items-end gap-2 border-t border-gray-100 pt-4">
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-xs font-medium text-brand-green-900">Motif d&apos;annulation</label>
-              <input name="reason" required className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
-            </div>
-            <button className="rounded-md border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">
-              {order.status === "EN_ATTENTE" ? "Rejeter la commande" : "Annuler la commande"}
-            </button>
-          </form>
+          {canCancel && (
+            <ActionForm
+              action={cancelAction}
+              className="flex flex-wrap items-end gap-2 border-t border-gray-100 pt-4"
+              confirm={{
+                title: order.status === "EN_ATTENTE" ? "Rejeter cette commande ?" : "Annuler cette commande ?",
+                message: `La commande ${order.reference} sera annulee, le stock libere et sa facture eventuelle annulee. Le client verra la commande comme annulee.`,
+                confirmLabel: order.status === "EN_ATTENTE" ? "Oui, rejeter" : "Oui, annuler la commande",
+              }}
+            >
+              <div className="flex-1 min-w-[200px]">
+                <label className="text-xs font-medium text-brand-green-900">Motif d&apos;annulation</label>
+                <input name="reason" required className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+              </div>
+              <button className="rounded-md border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">
+                {order.status === "EN_ATTENTE" ? "Rejeter la commande" : "Annuler la commande"}
+              </button>
+            </ActionForm>
+          )}
         </div>
       )}
 

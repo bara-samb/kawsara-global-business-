@@ -1,15 +1,31 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { ShoppingCart, Trash2, ArrowRight, ArrowLeft } from "lucide-react";
 import { useCartStore, cartTotal } from "@/lib/cart-store";
+import { WhatsAppIcon } from "@/components/site/whatsapp-icon";
+import { ProductVisual } from "@/components/site/product-visual";
+import { whatsappUrl } from "@/lib/site-contact";
 
 export function PanierView() {
   const items = useCartStore((s) => s.items);
   const setQuantity = useCartStore((s) => s.setQuantity);
   const removeItem = useCartStore((s) => s.removeItem);
   const total = cartTotal(items);
+  const whatsappMessage = [
+    "Bonjour, je souhaite discuter de ma commande :",
+    "",
+    ...items.flatMap((item) => [
+      `- ${item.name} (${item.reference})`,
+      `  Description : ${item.description || "Non renseignée"}`,
+      `  Quantité : ${item.quantity}`,
+      `  Prix unitaire : ${item.unitPrice.toLocaleString("fr-FR")} FCFA`,
+      `  Montant : ${(item.unitPrice * item.quantity).toLocaleString("fr-FR")} FCFA`,
+      "",
+    ]),
+    `Total : ${total.toLocaleString("fr-FR")} FCFA`,
+  ].join("\n");
+  const whatsappHref = whatsappUrl(whatsappMessage);
 
   if (items.length === 0) {
     return (
@@ -32,12 +48,8 @@ export function PanierView() {
             style={{ animationDelay: `${i * 40}ms` }}
             className="animate-fade-in-up flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 transition hover:shadow-sm"
           >
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-brand-green-50">
-              {item.imageUrl ? (
-                <Image src={item.imageUrl} alt={item.name} width={64} height={64} className="h-full w-full object-cover" />
-              ) : (
-                <span className="text-[10px] text-gray-400">Sans image</span>
-              )}
+            <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-lg border border-brand-green-100">
+              <ProductVisual src={item.imageUrl} alt={item.name} sizes="80px" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="truncate font-semibold text-brand-green-900">{item.name}</p>
@@ -83,6 +95,17 @@ export function PanierView() {
           Passer la commande
           <ArrowRight className="h-4 w-4" />
         </Link>
+        <a
+          href={whatsappHref}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 flex items-center justify-center gap-2 whitespace-nowrap rounded-md bg-green-600 px-4 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-green-700"
+        >
+          <span className="rounded-md bg-white/15 p-0.5">
+            <WhatsAppIcon className="h-4 w-4" />
+          </span>
+          Discuter sur WhatsApp
+        </a>
         <Link href="/catalogue" className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs font-semibold text-brand-green-700 hover:text-brand-gold-600">
           <ArrowLeft className="h-3.5 w-3.5" />
           Continuer mes achats

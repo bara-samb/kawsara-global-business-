@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { cancelCustomerEcommerceOrder } from "@/lib/actions/ecommerce";
+import { ActionForm } from "@/components/action-form";
 
 const STATUS_LABELS: Record<string, string> = {
   EN_ATTENTE: "En attente de confirmation",
@@ -105,14 +106,22 @@ export default async function CommandeDetailPage({
           <p className="mt-1 text-sm text-red-700">
             La commande sera annulee, la facture sera revoquee et les produits seront remis en stock.
           </p>
-          <form action={cancelCustomerEcommerceOrder.bind(null, order.id)} className="mt-3">
+          <ActionForm
+            action={cancelCustomerEcommerceOrder.bind(null, order.id)}
+            className="mt-3"
+            confirm={{
+              title: "Annuler votre commande ?",
+              message: `La commande ${order.reference} sera annulee. Cette action est definitive.`,
+              confirmLabel: "Oui, annuler ma commande",
+            }}
+          >
             <button
               type="submit"
               className="rounded-md border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
             >
               Annuler la commande
             </button>
-          </form>
+          </ActionForm>
         </div>
       )}
 

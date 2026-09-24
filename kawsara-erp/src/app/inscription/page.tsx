@@ -3,6 +3,7 @@ import Image from "next/image";
 import { User, Mail, Phone, MapPin, Lock, UserPlus, AlertCircle, LogIn, ArrowLeft } from "lucide-react";
 import { registerCustomer } from "@/lib/actions/auth-register";
 import { CaptchaField } from "@/components/site/captcha-field";
+import { ActionForm } from "@/components/action-form";
 
 function FieldIcon({ icon: Icon }: { icon: typeof User }) {
   return <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />;
@@ -40,7 +41,7 @@ export default async function InscriptionPage({
           </p>
         )}
 
-        <form action={registerCustomer} className="mt-6 space-y-4">
+        <ActionForm action={registerCustomer} className="mt-6 space-y-4">
           <div>
             <label className="text-sm font-medium text-brand-green-900" htmlFor="name">Nom complet</label>
             <div className="relative mt-1">
@@ -84,7 +85,7 @@ export default async function InscriptionPage({
             <UserPlus className="h-4 w-4" />
             Creer mon compte
           </button>
-        </form>
+        </ActionForm>
 
         <p className="mt-6 flex items-center justify-center gap-1.5 text-center text-sm">
           <LogIn className="h-4 w-4 text-brand-green-700" />

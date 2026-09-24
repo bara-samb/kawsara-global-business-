@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Home, Store, Info, Phone, LayoutDashboard, User, LogIn } from "lucide-react";
+import { Home, Store, Info, Phone, LayoutDashboard } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { CartBadge } from "@/components/site/cart-badge";
 import { MobileMenu, type SiteNavItem } from "@/components/site/mobile-menu";
@@ -14,33 +14,31 @@ const NAV: SiteNavItem[] = [
 
 const DESKTOP_NAV_ICONS = { home: Home, catalogue: Store, about: Info, contact: Phone } as const;
 
+// La boutique n'affiche aucun lien de connexion : les clients commandent sans compte, et
+// l'espace gestion a sa propre adresse (/gestion) communiquee uniquement au personnel.
+// Seul un employe DEJA connecte voit un raccourci vers l'ERP.
 export async function SiteHeader() {
   const session = await auth();
-  const isStaff = session?.user && session.user.role !== "CLIENT";
-
-  const accountItem: SiteNavItem = isStaff
-    ? { href: "/erp", label: "Espace gestion", iconKey: "dashboard" }
-    : session?.user
-      ? { href: "/compte/commandes", label: "Mon compte", iconKey: "account" }
-      : { href: "/connexion", label: "Connexion", iconKey: "login" };
+  const isStaff = !!session?.user && session.user.role !== "CLIENT";
+  const staffItem: SiteNavItem = { href: "/erp", label: "Espace gestion", iconKey: "dashboard" };
 
   return (
     <header className="sticky top-0 z-40 border-b border-brand-green-100 bg-white/90 backdrop-blur print:hidden">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Link href="/" className="flex items-center gap-2 shrink-0 transition-transform active:scale-95">
           <Image
-            src="/logo-kawsara.jpg"
+            src="/brand/logo-mark.png"
             alt="Kawsara Global Business"
-            width={40}
-            height={40}
-            className="rounded-full"
+            width={56}
+            height={48}
+            className="h-10 w-auto sm:h-12"
             priority
           />
-          <span className="hidden flex-col leading-tight sm:flex">
-            <span className="text-sm font-extrabold tracking-wide text-brand-green-800">
+          <span className="flex flex-col leading-tight">
+            <span className="text-base font-extrabold tracking-wide text-brand-green-800 sm:text-lg">
               KAWSARA
             </span>
-            <span className="text-[11px] font-semibold tracking-wide text-brand-gold-600">
+            <span className="text-[11px] font-bold tracking-wider text-brand-gold-600 sm:text-xs">
               GLOBAL BUSINESS
             </span>
           </span>
@@ -64,7 +62,7 @@ export async function SiteHeader() {
 
         <div className="flex items-center gap-2">
           <CartBadge />
-          {isStaff ? (
+          {isStaff && (
             <Link
               href="/erp"
               className="hidden items-center gap-1.5 rounded-md bg-brand-green-700 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-green-800 active:scale-95 sm:flex"
@@ -72,24 +70,8 @@ export async function SiteHeader() {
               <LayoutDashboard className="h-4 w-4" />
               Espace gestion
             </Link>
-          ) : session?.user ? (
-            <Link
-              href="/compte/commandes"
-              className="hidden items-center gap-1.5 rounded-md bg-brand-green-700 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-green-800 active:scale-95 sm:flex"
-            >
-              <User className="h-4 w-4" />
-              Mon compte
-            </Link>
-          ) : (
-            <Link
-              href="/connexion"
-              className="hidden items-center gap-1.5 rounded-md bg-brand-green-700 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-brand-green-800 active:scale-95 sm:flex"
-            >
-              <LogIn className="h-4 w-4" />
-              Connexion
-            </Link>
           )}
-          <MobileMenu items={[...NAV, accountItem]} />
+          <MobileMenu items={isStaff ? [...NAV, staffItem] : NAV} />
         </div>
       </div>
     </header>

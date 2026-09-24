@@ -18,4 +18,15 @@ describe("Export CSV (cahier des charges section 33/56)", () => {
     const csv = toCsv([], [{ key: "a", label: "A" }]);
     expect(csv.split("\r\n")).toHaveLength(1);
   });
+
+  it("neutralise les formules Excel saisies par un utilisateur (injection CSV)", () => {
+    const csv = toCsv(
+      [{ a: '=HYPERLINK("http://pirate.example","Cliquez")', b: "+33 6", c: -500 }],
+      [{ key: "a", label: "A" }, { key: "b", label: "B" }, { key: "c", label: "C" }]
+    );
+    const line = csv.split("\r\n")[1];
+    expect(line.startsWith("\"'=HYPERLINK")).toBe(true);
+    expect(line).toContain(";'+33 6;");
+    expect(line.endsWith(";-500")).toBe(true); // un vrai nombre negatif reste un nombre
+  });
 });

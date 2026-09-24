@@ -8,6 +8,8 @@ import { getPaymentOptions } from "@/lib/payment-options";
 import { PrintButton } from "@/components/erp/print-button";
 import Image from "next/image";
 import { amountToFrench } from "@/lib/number-to-french";
+import { ActionForm } from "@/components/action-form";
+import { requirePagePermission } from "@/lib/require-permission";
 
 const STATUS_LABELS: Record<string, string> = {
   EN_ATTENTE: "En attente",
@@ -20,9 +22,11 @@ export default async function DebitDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requirePagePermission("debit.read");
   const { id } = await params;
   const session = await auth();
   const role = session!.user.role;
+  const isPrincipalAdmin = session!.user.isPrincipalAdmin;
 
   const debit = await prisma.debit.findUnique({
     where: { id },
@@ -55,7 +59,7 @@ export default async function DebitDetailPage({
         <div className="grid gap-4 border-b border-gray-200 pb-6 sm:grid-cols-[1fr_auto]">
           <div className="rounded-lg border border-brand-green-100 bg-brand-green-50/40 p-4">
             <div className="flex items-center gap-4">
-              <Image src="/logo-kawsara.jpg" alt="Kawsara Global Business" width={104} height={104} className="h-24 w-24 rounded-full object-cover" />
+              <Image src="/brand/logo-mark.png" alt="Kawsara Global Business" width={118} height={101} className="h-auto w-24 shrink-0" />
               <div>
                 <p className="text-lg font-extrabold text-brand-green-900">KAWSARA GLOBAL BUSINESS</p>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-green-800">Import - Export</p>
@@ -152,7 +156,7 @@ export default async function DebitDetailPage({
       ) : (
         <>
           {can(role, "debit.transform") && (
-            <form action={transformDebitToInvoice.bind(null, debit.id)} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6 print:hidden">
+            <ActionForm action={transformDebitToInvoice.bind(null, debit.id)} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6 print:hidden">
               <h2 className="font-semibold text-brand-green-900">Transformer en facture</h2>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -180,14 +184,22 @@ export default async function DebitDetailPage({
               <button type="submit" className="rounded-md bg-brand-green-700 px-5 py-2.5 font-semibold text-white hover:bg-brand-green-800">
                 Transformer en facture
               </button>
-            </form>
+            </ActionForm>
           )}
-          {can(role, "debit.cancel") && (
-            <form action={cancelDebit.bind(null, debit.id)} className="print:hidden">
+          {can(role, "debit.cancel", isPrincipalAdmin) && (
+            <ActionForm
+              action={cancelDebit.bind(null, debit.id)}
+              className="print:hidden"
+              confirm={{
+                title: "Annuler ce debit ?",
+                message: `Le debit ${debit.reference} sera annule et le stock reserve sera libere. Il ne pourra plus etre transforme en facture.`,
+                confirmLabel: "Oui, annuler le debit",
+              }}
+            >
               <button type="submit" className="rounded-md border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">
                 Annuler ce debit (liberer la reservation)
               </button>
-            </form>
+            </ActionForm>
           )}
         </>
       )}

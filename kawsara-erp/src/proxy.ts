@@ -1,41 +1,31 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
+import { hitRateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 
-/**
- * Rate limiting anti-brute-force / anti-spam (cahier des charges section 38/47) sur les
- * points d'entree sensibles : connexion et inscription. En memoire, adapte a une instance
- * unique (le cas de ce projet) ; pour plusieurs instances en production, remplacer par un
- * compteur partage (Redis, etc.).
- */
+// Rate limiting anti-brute-force (cahier des charges section 38/47) sur la connexion du personnel.
+// Le formulaire de /gestion est une Server Action : elle est envoyee en POST sur /gestion.
 const WINDOW_MS = 60_000;
 const MAX_ATTEMPTS = 15;
-const hits = new Map<string, { count: number; resetAt: number }>();
 
-function isRateLimited(key: string): boolean {
-  const now = Date.now();
-  const entry = hits.get(key);
-  if (!entry || now > entry.resetAt) {
-    hits.set(key, { count: 1, resetAt: now + WINDOW_MS });
-    return false;
-  }
-  entry.count += 1;
-  return entry.count > MAX_ATTEMPTS;
-}
-
-function clientIp(req: NextRequest): string {
-  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
-}
+// Les clients commandent sans compte : l'ancien espace client et l'inscription sont fermes.
+// Le blocage se fait ici (avant les Server Actions de ces pages), pas seulement en masquant les liens.
+const CLOSED_CUSTOMER_PATHS = ["/inscription", "/compte", "/connexion"];
 
 export default async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  if (CLOSED_CUSTOMER_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return NextResponse.redirect(new URL("/catalogue", req.url));
+  }
+
   const isSensitivePost =
     req.method === "POST" &&
-    (pathname.startsWith("/api/auth/callback/credentials") || pathname === "/inscription");
+    (pathname.startsWith("/api/auth/callback/credentials") || pathname === "/gestion");
 
   if (isSensitivePost) {
-    const key = `${pathname}:${clientIp(req)}`;
-    if (isRateLimited(key)) {
+    const key = `${pathname}:${clientIpFromHeaders(req.headers)}`;
+    if (hitRateLimit(key, MAX_ATTEMPTS, WINDOW_MS)) {
       return new NextResponse("Trop de tentatives. Reessayez dans une minute.", { status: 429 });
     }
   }
@@ -45,9 +35,14 @@ export default async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/erp/:path*", "/compte/:path*", "/api/auth/callback/credentials", "/inscription"],
-  // Le middleware par defaut tourne sur l'Edge Runtime, incompatible avec bcrypt et le moteur
-  // natif de Prisma utilises par la configuration NextAuth complete (@/lib/auth). On force donc
-  // le runtime Node.js ici (necessaire notamment pour un deploiement Vercel).
-  runtime: "nodejs",
+  // Pas de `runtime` ici : depuis Next.js 16, le proxy tourne toujours sur Node.js (compatible
+  // avec bcrypt et Prisma utilises par @/lib/auth), et l'option est refusee.
+  matcher: [
+    "/erp/:path*",
+    "/gestion",
+    "/api/auth/callback/credentials",
+    "/inscription",
+    "/compte/:path*",
+    "/connexion",
+  ],
 };

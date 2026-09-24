@@ -2,8 +2,10 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
+import { requirePagePermission } from "@/lib/require-permission";
 
 export default async function FournisseursPage() {
+  await requirePagePermission("supplier.read");
   const session = await auth();
   const role = session!.user.role;
 

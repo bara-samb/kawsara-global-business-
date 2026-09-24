@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { illustrationUrl } from "./product-illustrations.mjs";
 
 const prisma = new PrismaClient();
 
@@ -54,6 +55,7 @@ async function main() {
       email: "admin@kawsara.com",
       passwordHash: password,
       role: "ADMIN",
+      isPrincipalAdmin: true,
     },
   });
 
@@ -195,7 +197,7 @@ async function main() {
       data: { productId: product.id, storeId: storeSecondaire.id, quantity: p.stockSecondaire },
     });
     await prisma.productImage.create({
-      data: { productId: product.id, url: categoryImages[p.category], position: 0 },
+      data: { productId: product.id, url: illustrationUrl(p.name) ?? categoryImages[p.category], position: 0 },
     });
   }
 

@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { updateCustomer } from "@/lib/actions/customers";
+import { ActionForm } from "@/components/action-form";
+import { requirePagePermission } from "@/lib/require-permission";
 
 const DEBT_LABELS: Record<string, string> = {
   NON_PAYEE: "Non payee",
@@ -37,6 +39,7 @@ export default async function ClientDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ period?: string }>;
 }) {
+  await requirePagePermission("customer.read");
   const { id } = await params;
   const { period: periodParam } = await searchParams;
   const period = periodParam && PERIOD_LABELS[periodParam] ? periodParam : "jour";
@@ -198,7 +201,7 @@ export default async function ClientDetailPage({
         )}
       </div>
 
-      <form action={boundUpdate} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
+      <ActionForm action={boundUpdate} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
         <h2 className="font-semibold text-brand-green-900">Modifier la fiche client</h2>
         <div>
           <label className="text-sm font-medium text-brand-green-900">Nom complet</label>
@@ -224,7 +227,7 @@ export default async function ClientDetailPage({
         <button type="submit" className="rounded-md bg-brand-green-700 px-5 py-2.5 font-semibold text-white hover:bg-brand-green-800">
           Enregistrer
         </button>
-      </form>
+      </ActionForm>
     </div>
   );
 }

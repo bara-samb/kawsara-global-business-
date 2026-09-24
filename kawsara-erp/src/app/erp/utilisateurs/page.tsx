@@ -2,6 +2,8 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { createStaffUser, toggleUserActive } from "@/lib/actions/users";
+import { ActionForm } from "@/components/action-form";
+import { requirePagePermission } from "@/lib/require-permission";
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Administrateur",
@@ -18,11 +20,13 @@ export default async function UtilisateursPage({
 }: {
   searchParams: Promise<{ cree?: string }>;
 }) {
+  await requirePagePermission("user.read");
   const { cree } = await searchParams;
   const session = await auth();
   const role = session!.user.role;
-  const canCreate = can(role, "user.create");
-  const canUpdate = can(role, "user.update");
+  const isPrincipalAdmin = session!.user.isPrincipalAdmin;
+  const canCreate = can(role, "user.create", isPrincipalAdmin);
+  const canUpdate = can(role, "user.update", isPrincipalAdmin);
 
   const [users, stores] = await Promise.all([
     prisma.user.findMany({
@@ -45,7 +49,15 @@ export default async function UtilisateursPage({
       )}
 
       {canCreate && (
-        <form action={createStaffUser} className="mt-6 grid gap-3 rounded-xl border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-5">
+        <ActionForm
+          action={createStaffUser}
+          className="mt-6 grid gap-3 rounded-xl border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-5"
+          confirm={{
+            title: "Creer ce compte ?",
+            message: "Un nouveau compte du personnel sera cree avec le role choisi. Il donnera acces a l'ERP.",
+            confirmLabel: "Oui, creer le compte",
+          }}
+        >
           <div>
             <label className="text-xs font-medium text-brand-green-900">Nom</label>
             <input name="name" required className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
@@ -83,7 +95,7 @@ export default async function UtilisateursPage({
               Creer le compte
             </button>
           </div>
-        </form>
+        </ActionForm>
       )}
 
       <div className="mt-6 overflow-x-auto rounded-xl border border-gray-200 bg-white">
@@ -103,7 +115,14 @@ export default async function UtilisateursPage({
               const toggle = toggleUserActive.bind(null, u.id, !u.active);
               return (
                 <tr key={u.id} className="hover:bg-brand-green-50/50">
-                  <td className="px-4 py-3 font-medium text-brand-green-900">{u.name}</td>
+                  <td className="px-4 py-3 font-medium text-brand-green-900">
+                    {u.name}
+                    {u.isPrincipalAdmin && (
+                      <span className="ml-2 rounded-full bg-brand-gold-100 px-2 py-0.5 text-xs font-semibold text-brand-gold-700">
+                        Admin principal
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-gray-600">{u.email}</td>
                   <td className="px-4 py-3">{ROLE_LABELS[u.role]}</td>
                   <td className="px-4 py-3 text-gray-600">{u.store?.name ?? "-"}</td>
@@ -114,11 +133,28 @@ export default async function UtilisateursPage({
                   </td>
                   {canUpdate && (
                     <td className="px-4 py-3 text-right">
-                      <form action={toggle}>
-                        <button className="text-xs font-medium text-brand-green-700 hover:underline">
-                          {u.active ? "Desactiver" : "Reactiver"}
-                        </button>
-                      </form>
+                      {!(u.active && u.isPrincipalAdmin) && (
+                        <ActionForm
+                          action={toggle}
+                          confirm={
+                            u.active
+                              ? {
+                                  title: "Desactiver ce compte ?",
+                                  message: `${u.name} (${u.email}) ne pourra plus se connecter.`,
+                                  confirmLabel: "Oui, desactiver",
+                                }
+                              : {
+                                  title: "Reactiver ce compte ?",
+                                  message: `${u.name} (${u.email}) pourra de nouveau se connecter.`,
+                                  confirmLabel: "Oui, reactiver",
+                                }
+                          }
+                        >
+                          <button className="text-xs font-medium text-brand-green-700 hover:underline">
+                            {u.active ? "Desactiver" : "Reactiver"}
+                          </button>
+                        </ActionForm>
+                      )}
                     </td>
                   )}
                 </tr>

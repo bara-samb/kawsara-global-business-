@@ -12,6 +12,10 @@ vi.mock("next/navigation", () => ({
     (err as { digest?: string }).digest = `NEXT_REDIRECT;replace;${url};307;`;
     throw err;
   },
+  // Comme le vrai unstable_rethrow : laisse passer les redirections interceptees par runAction.
+  unstable_rethrow: (error: unknown) => {
+    if (String((error as { digest?: string })?.digest ?? "").startsWith("NEXT_REDIRECT")) throw error;
+  },
 }));
 
 const { createSale } = await import("@/lib/actions/sales");
@@ -60,13 +64,47 @@ describe("Ventes comptant : blocage si stock insuffisant (critere d'acceptation 
     fd.set("paymentOption", "METHOD:WAVE");
     fd.set("items", JSON.stringify([{ productId, quantity: 5, unitPrice: 2000 }]));
 
-    await expect(createSale(fd)).rejects.toThrow(/stock insuffisant/i);
+    expect((await createSale(fd))?.error).toMatch(/stock insuffisant/i);
 
     const stock = await prisma.stock.findUnique({ where: { productId_storeId: { productId, storeId } } });
     expect(stock?.quantity).toBe(2); // inchange
 
     const saleCount = await prisma.sale.count({ where: { items: { some: { productId } } } });
     expect(saleCount).toBe(0);
+  });
+
+  it("refuse a un caissier de vendre dans une autre boutique que la sienne", async () => {
+    const fd = new FormData();
+    fd.set("storeId", "autre-boutique-id");
+    fd.set("discount", "0");
+    fd.set("paymentOption", "METHOD:WAVE");
+    fd.set("items", JSON.stringify([{ productId, quantity: 1, unitPrice: 2000 }]));
+
+    expect((await createSale(fd))?.error).toMatch(/votre propre boutique/i);
+  });
+
+  it("refuse a un caissier une vente a perte (prix ou remise sous le prix d'achat)", async () => {
+    const fd = new FormData();
+    fd.set("storeId", storeId);
+    fd.set("discount", "0");
+    fd.set("paymentOption", "METHOD:WAVE");
+    fd.set("items", JSON.stringify([{ productId, quantity: 1, unitPrice: 1 }]));
+    expect((await createSale(fd))?.error).toMatch(/vente a perte refusee/i);
+
+    fd.set("items", JSON.stringify([{ productId, quantity: 1, unitPrice: 2000 }]));
+    fd.set("discount", "1500"); // total 500 < cout 1000
+    expect((await createSale(fd))?.error).toMatch(/vente a perte refusee/i);
+
+    expect(await prisma.sale.count({ where: { items: { some: { productId } } } })).toBe(0);
+  });
+
+  it("refuse un encaissement dans une caisse inexistante ou fermee", async () => {
+    const fd = new FormData();
+    fd.set("storeId", storeId);
+    fd.set("discount", "0");
+    fd.set("paymentOption", "CASH:session-inexistante");
+    fd.set("items", JSON.stringify([{ productId, quantity: 1, unitPrice: 2000 }]));
+    expect((await createSale(fd))?.error).toMatch(/caisse n'est pas ouverte/i);
   });
 
   afterAll(async () => {

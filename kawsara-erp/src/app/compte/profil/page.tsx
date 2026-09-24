@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateOwnProfile } from "@/lib/actions/account";
+import { ActionForm } from "@/components/action-form";
 
 export default async function ProfilPage({
   searchParams,
@@ -29,7 +30,7 @@ export default async function ProfilPage({
         </p>
       )}
 
-      <form action={updateOwnProfile} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
+      <ActionForm action={updateOwnProfile} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
         <div>
           <label className="text-sm font-medium text-brand-green-900">Nom complet</label>
           <input name="name" required defaultValue={customer.name} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
@@ -50,7 +51,7 @@ export default async function ProfilPage({
         <button type="submit" className="rounded-md bg-brand-green-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-green-800">
           Enregistrer
         </button>
-      </form>
+      </ActionForm>
     </div>
   );
 }

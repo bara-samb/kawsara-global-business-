@@ -1,5 +1,11 @@
 function escapeCsvValue(value: unknown): string {
-  const str = value === null || value === undefined ? "" : String(value);
+  let str = value === null || value === undefined ? "" : String(value);
+  // Anti-injection de formules : un texte saisi par un client (ex. nom "=HYPERLINK(...)") serait
+  // execute par Excel a l'ouverture de l'export. Une apostrophe le force a rester du texte.
+  // Les nombres (montants negatifs, etc.) ne sont pas concernes.
+  if (typeof value === "string" && /^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
   if (/[",\n;]/.test(str)) {
     return `"${str.replace(/"/g, '""')}"`;
   }

@@ -4,8 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { markNotificationRead, markAllNotificationsRead } from "@/lib/actions/notifications";
 import { getNotificationHref } from "@/lib/notification-links";
 import { NotificationLink } from "@/components/erp/notification-link";
+import { ActionForm } from "@/components/action-form";
+import { requirePagePermission } from "@/lib/require-permission";
 
 export default async function NotificationsPage() {
+  await requirePagePermission("notification.read");
   const session = await auth();
   const notifications = await prisma.notification.findMany({
     where: { userId: session!.user.id },
@@ -22,11 +25,11 @@ export default async function NotificationsPage() {
           <p className="text-sm text-gray-500">{unreadCount} non lue(s) sur {notifications.length}</p>
         </div>
         {unreadCount > 0 && (
-          <form action={markAllNotificationsRead}>
+          <ActionForm action={markAllNotificationsRead}>
             <button className="rounded-md bg-brand-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-green-800">
               Tout marquer lu
             </button>
-          </form>
+          </ActionForm>
         )}
       </div>
 
@@ -48,9 +51,9 @@ export default async function NotificationsPage() {
               <p className="mt-2 text-xs text-gray-400">{n.createdAt.toLocaleString("fr-FR")}</p>
             </NotificationLink>
             {!n.read && (
-              <form action={markNotificationRead.bind(null, n.id)}>
+              <ActionForm action={markNotificationRead.bind(null, n.id)}>
                 <button className="shrink-0 text-xs font-semibold text-brand-green-700 hover:underline">Marquer lu</button>
-              </form>
+              </ActionForm>
             )}
           </li>
         ))}

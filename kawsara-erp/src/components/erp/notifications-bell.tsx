@@ -39,7 +39,7 @@ export async function NotificationsBell() {
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-brand-green-900">Notifications</p>
           {unreadCount > 0 && (
-            <form action={markAllNotificationsRead}>
+            <form action={async () => { "use server"; await markAllNotificationsRead(); }}>
               <button className="flex items-center gap-1 text-xs font-semibold text-brand-green-700 hover:underline">
                 <CheckCheck className="h-3.5 w-3.5" />
                 Tout marquer lu
@@ -61,7 +61,7 @@ export async function NotificationsBell() {
                   <p className="mt-1 text-[10px] text-gray-400">{n.createdAt.toLocaleString("fr-FR")}</p>
                 </NotificationLink>
                 {!n.read && (
-                  <form action={markNotificationRead.bind(null, n.id)}>
+                  <form action={async () => { "use server"; await markNotificationRead(n.id); }}>
                     <button className="flex shrink-0 items-center gap-1 text-[10px] font-semibold text-brand-green-700 hover:underline">
                       <Check className="h-3 w-3" />
                       Lu
