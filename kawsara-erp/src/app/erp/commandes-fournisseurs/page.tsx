@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
+import { requirePagePermission } from "@/lib/require-permission";
 
 const STATUS_LABELS: Record<string, string> = {
   BROUILLON: "Brouillon",
@@ -12,6 +13,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default async function CommandesFournisseursPage() {
+  await requirePagePermission("supplierOrder.read");
   const session = await auth();
   const role = session!.user.role;
 

@@ -3,16 +3,20 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { adjustStock } from "@/lib/actions/stores";
+import { ActionForm } from "@/components/action-form";
+import { requirePagePermission } from "@/lib/require-permission";
 
 export default async function StockPage({
   searchParams,
 }: {
   searchParams: Promise<{ critique?: string }>;
 }) {
+  await requirePagePermission("stock.read");
   const { critique } = await searchParams;
   const showCriticalOnly = critique === "1";
   const session = await auth();
   const role = session!.user.role;
+  const isPrincipalAdmin = session!.user.isPrincipalAdmin;
 
   const stores = await prisma.store.findMany({
     orderBy: { createdAt: "asc" },
@@ -63,7 +67,7 @@ export default async function StockPage({
                   <th className="py-1">Reserve</th>
                   <th className="py-1">Seuil</th>
                   <th className="py-1">Statut</th>
-                  {can(role, "stock.adjust") && <th className="py-1">Ajuster</th>}
+                  {can(role, "stock.adjust", isPrincipalAdmin) && <th className="py-1">Ajuster</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -89,9 +93,17 @@ export default async function StockPage({
                           <span className="rounded-full bg-brand-green-100 px-2 py-0.5 text-xs font-semibold text-brand-green-700">OK</span>
                         )}
                       </td>
-                      {can(role, "stock.adjust") && (
+                      {can(role, "stock.adjust", isPrincipalAdmin) && (
                         <td className="py-2">
-                          <form action={adjustStock} className="flex items-center gap-1">
+                          <ActionForm
+                            action={adjustStock}
+                            className="flex items-center gap-1"
+                            confirm={{
+                              title: "Corriger le stock manuellement ?",
+                              message: `Le stock de « ${s.product.name} » dans ${store.name} (actuellement ${s.quantity}) sera remplace par la quantite saisie.`,
+                              confirmLabel: "Oui, corriger le stock",
+                            }}
+                          >
                             <input type="hidden" name="productId" value={s.productId} />
                             <input type="hidden" name="storeId" value={store.id} />
                             <input
@@ -111,7 +123,7 @@ export default async function StockPage({
                             <button type="submit" className="rounded-md bg-brand-green-700 px-2 py-1 text-xs font-semibold text-white hover:bg-brand-green-800">
                               OK
                             </button>
-                          </form>
+                          </ActionForm>
                         </td>
                       )}
                     </tr>

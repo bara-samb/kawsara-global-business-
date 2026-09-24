@@ -61,39 +61,49 @@ describe("Commande e-commerce : securite du stock (cahier des charges section 39
   });
 
   it("bloque une commande dont la quantite depasse le stock total disponible (section 19)", async () => {
-    await expect(
-      createEcommerceOrder({
-        items: [{ productId, quantity: 5 }],
-        shippingAddress: "Adresse",
-        shippingPhone: "770000000",
-        paymentMethod: "ESPECES",
-      })
-    ).rejects.toThrow(/stock insuffisant/i);
+    const result = await createEcommerceOrder({
+      items: [{ productId, quantity: 5 }],
+      customerName: "Client Vitest",
+      shippingAddress: "Adresse",
+      shippingPhone: "770000000",
+      paymentMethod: "ESPECES",
+    });
+    expect("error" in result && result.error).toMatch(/stock insuffisant/i);
   });
 
   it("n'autorise qu'une seule des deux commandes simultanees sur le dernier article en stock (pas de double vente)", async () => {
     const checkoutInput = {
       items: [{ productId, quantity: 1 }],
+      customerName: "Client Vitest",
       shippingAddress: "Adresse",
       shippingPhone: "770000000",
       paymentMethod: "ESPECES" as const,
     };
 
-    const results = await Promise.allSettled([
+    const results = await Promise.all([
       createEcommerceOrder(checkoutInput),
       createEcommerceOrder(checkoutInput),
     ]);
 
-    const fulfilled = results.filter((r) => r.status === "fulfilled");
-    const rejected = results.filter((r) => r.status === "rejected");
-    expect(fulfilled).toHaveLength(1);
-    expect(rejected).toHaveLength(1);
+    expect(results.filter((r) => !("error" in r))).toHaveLength(1);
+    expect(results.filter((r) => "error" in r)).toHaveLength(1);
 
     const stock = await prisma.stock.findUnique({ where: { productId_storeId: { productId, storeId } } });
     expect(stock?.reserved).toBe(1);
 
     const orderCount = await prisma.ecommerceOrder.count({ where: { items: { some: { productId } } } });
     expect(orderCount).toBe(1);
+  });
+
+  it("refuse les quantites abusives (anti-blocage du stock)", async () => {
+    const result = await createEcommerceOrder({
+      items: [{ productId, quantity: 101 }],
+      customerName: "Client Vitest",
+      shippingAddress: "Adresse",
+      shippingPhone: "770000001",
+      paymentMethod: "ESPECES",
+    });
+    expect("error" in result && result.error).toMatch(/100 unites maximum/);
   });
 
   afterAll(async () => {

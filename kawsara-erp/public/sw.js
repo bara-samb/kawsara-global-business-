@@ -1,7 +1,7 @@
 // Service worker minimal (PWA) : ameliore l'experience mobile (installable, resilience reseau
 // faible) sans se substituer a la logique metier, toujours executee cote serveur.
 // N'est enregistre qu'en production (voir src/components/pwa-register.tsx).
-const CACHE_NAME = "kawsara-v1";
+const CACHE_NAME = "kawsara-v2"; // v2 : nouveau logo et nouvelles icones
 const APP_SHELL = ["/", "/catalogue", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {

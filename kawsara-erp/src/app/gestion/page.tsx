@@ -1,9 +1,9 @@
-import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { AuthError, CredentialsSignin } from "next-auth";
-import { Mail, Lock, ShieldCheck, LogIn, AlertCircle, UserPlus, ArrowLeft } from "lucide-react";
-import { signIn } from "@/lib/auth";
+import type { Metadata } from "next";
+import { Mail, Lock, ShieldCheck, LogIn, AlertCircle } from "lucide-react";
+import { auth, signIn } from "@/lib/auth";
 import { verifyCaptcha } from "@/lib/captcha";
 import { CaptchaField } from "@/components/site/captcha-field";
 
@@ -22,7 +22,7 @@ async function authenticate(formData: FormData) {
     String(formData.get("captchaAnswer") ?? "")
   );
   if (!captchaOk) {
-    redirect(`/connexion?erreur=captcha&callbackUrl=${encodeURIComponent(callbackUrl)}`);
+    redirect(`/gestion?erreur=captcha&callbackUrl=${encodeURIComponent(callbackUrl)}`);
   }
 
   try {
@@ -35,7 +35,7 @@ async function authenticate(formData: FormData) {
   } catch (error) {
     if (error instanceof AuthError) {
       const code = error instanceof CredentialsSignin ? error.code : "1";
-      redirect(`/connexion?erreur=${code}&callbackUrl=${encodeURIComponent(callbackUrl)}`);
+      redirect(`/gestion?erreur=${code}&callbackUrl=${encodeURIComponent(callbackUrl)}`);
     }
     throw error;
   }
@@ -49,20 +49,29 @@ const ERROR_MESSAGES: Record<string, string> = {
   captcha: "Reponse de verification incorrecte ou expiree, veuillez reessayer.",
 };
 
-export default async function ConnexionPage({
+// Page de connexion du PERSONNEL uniquement : aucun lien depuis la boutique, et non indexee
+// par les moteurs de recherche. Les clients commandent sans compte.
+export const metadata: Metadata = {
+  title: "Espace gestion - Kawsara",
+  robots: { index: false, follow: false },
+};
+
+export default async function GestionLoginPage({
   searchParams,
 }: {
   searchParams: Promise<{ erreur?: string; callbackUrl?: string }>;
 }) {
   const { erreur, callbackUrl } = await searchParams;
+  const session = await auth();
+  if (session?.user && session.user.role !== "CLIENT") redirect("/erp");
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-brand-green-50 px-4 py-12">
       <div className="animate-scale-in w-full max-w-sm rounded-2xl border border-brand-green-100 bg-white p-8 shadow-sm">
         <div className="flex flex-col items-center">
-          <Image src="/logo-kawsara.jpg" alt="Kawsara Global Business" width={64} height={64} />
-          <h1 className="mt-4 text-lg font-bold text-brand-green-900">Connexion</h1>
-          <p className="text-sm text-gray-500">Espace client &amp; gestion (ERP)</p>
+          <Image src="/brand/logo-full.png" alt="Kawsara Global Business" width={590} height={497} className="h-auto w-44" priority />
+          <h1 className="mt-4 text-lg font-bold text-brand-green-900">Espace gestion</h1>
+          <p className="text-sm text-gray-500">Acces reserve au personnel Kawsara</p>
         </div>
 
         {erreur && (
@@ -131,23 +140,6 @@ export default async function ConnexionPage({
             Se connecter
           </button>
         </form>
-
-        <p className="mt-6 text-center text-xs text-gray-500">
-          Compte de demonstration : <br />
-          admin@kawsara.com / Admin123!
-        </p>
-        <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-sm">
-          <UserPlus className="h-4 w-4 text-brand-green-700" />
-          <Link href="/inscription" className="text-brand-green-700 hover:text-brand-gold-600">
-            Creer un compte client
-          </Link>
-        </p>
-        <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-sm">
-          <ArrowLeft className="h-4 w-4 text-brand-green-700" />
-          <Link href="/" className="text-brand-green-700 hover:text-brand-gold-600">
-            Retour a la boutique
-          </Link>
-        </p>
       </div>
     </main>
   );

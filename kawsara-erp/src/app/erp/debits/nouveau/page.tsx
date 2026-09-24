@@ -2,12 +2,15 @@ import { prisma } from "@/lib/prisma";
 import { createDebit } from "@/lib/actions/debits";
 import { LineItemsEditor } from "@/components/erp/line-items-editor";
 import { DepotSwitcher } from "@/components/erp/depot-switcher";
+import { ActionForm } from "@/components/action-form";
+import { requirePagePermission } from "@/lib/require-permission";
 
 export default async function NouveauDebitPage({
   searchParams,
 }: {
   searchParams: Promise<{ storeId?: string }>;
 }) {
+  await requirePagePermission("debit.create");
   const { storeId: storeIdParam } = await searchParams;
 
   const [stores, customers] = await Promise.all([
@@ -37,7 +40,7 @@ export default async function NouveauDebitPage({
   return (
     <div className="max-w-3xl">
       <h1 className="text-xl font-bold text-brand-green-900">Nouveau debit (vente a credit)</h1>
-      <form action={createDebit} className="mt-6 space-y-4 rounded-xl border border-gray-200 bg-white p-6">
+      <ActionForm action={createDebit} className="mt-6 space-y-4 rounded-xl border border-gray-200 bg-white p-6">
         <div className="grid grid-cols-2 gap-4">
           <DepotSwitcher stores={stores} currentStoreId={storeId} />
           <div>
@@ -56,7 +59,7 @@ export default async function NouveauDebitPage({
         <button type="submit" className="rounded-md bg-brand-green-700 px-5 py-2.5 font-semibold text-white hover:bg-brand-green-800">
           Enregistrer le debit
         </button>
-      </form>
+      </ActionForm>
     </div>
   );
 }

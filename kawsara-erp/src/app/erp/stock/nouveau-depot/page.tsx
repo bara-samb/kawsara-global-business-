@@ -1,10 +1,13 @@
 import { createStore } from "@/lib/actions/stores";
+import { ActionForm } from "@/components/action-form";
+import { requirePagePermission } from "@/lib/require-permission";
 
-export default function NouveauDepotPage() {
+export default async function NouveauDepotPage() {
+  await requirePagePermission("store.create");
   return (
     <div className="max-w-lg">
       <h1 className="text-xl font-bold text-brand-green-900">Nouveau depot</h1>
-      <form action={createStore} className="mt-6 space-y-4 rounded-xl border border-gray-200 bg-white p-6">
+      <ActionForm action={createStore} className="mt-6 space-y-4 rounded-xl border border-gray-200 bg-white p-6">
         <div>
           <label className="text-sm font-medium text-brand-green-900">Nom du depot</label>
           <input name="name" required className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
@@ -20,7 +23,7 @@ export default function NouveauDepotPage() {
         <button type="submit" className="rounded-md bg-brand-green-700 px-5 py-2.5 font-semibold text-white hover:bg-brand-green-800">
           Creer le depot
         </button>
-      </form>
+      </ActionForm>
     </div>
   );
 }

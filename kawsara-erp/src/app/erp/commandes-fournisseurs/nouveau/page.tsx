@@ -1,8 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { createSupplierOrder } from "@/lib/actions/supplier-orders";
 import { LineItemsEditor } from "@/components/erp/line-items-editor";
+import { ActionForm } from "@/components/action-form";
+import { requirePagePermission } from "@/lib/require-permission";
 
 export default async function NouvelleCommandeFournisseurPage() {
+  await requirePagePermission("supplierOrder.create");
   const [stores, suppliers, products] = await Promise.all([
     prisma.store.findMany({ orderBy: { name: "asc" } }),
     prisma.supplier.findMany({ orderBy: { name: "asc" } }),
@@ -19,7 +22,7 @@ export default async function NouvelleCommandeFournisseurPage() {
   return (
     <div className="max-w-3xl">
       <h1 className="text-xl font-bold text-brand-green-900">Nouvelle commande fournisseur</h1>
-      <form action={createSupplierOrder} className="mt-6 space-y-4 rounded-xl border border-gray-200 bg-white p-6">
+      <ActionForm action={createSupplierOrder} className="mt-6 space-y-4 rounded-xl border border-gray-200 bg-white p-6">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-sm font-medium text-brand-green-900">Fournisseur</label>
@@ -45,7 +48,7 @@ export default async function NouvelleCommandeFournisseurPage() {
         <button type="submit" className="rounded-md bg-brand-green-700 px-5 py-2.5 font-semibold text-white hover:bg-brand-green-800">
           Creer la commande
         </button>
-      </form>
+      </ActionForm>
     </div>
   );
 }

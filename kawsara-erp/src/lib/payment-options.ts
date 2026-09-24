@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
+import { UserError } from "@/lib/errors";
 
 /**
  * Construit les options du selecteur "Mode de paiement" : une option par caisse actuellement
@@ -37,6 +38,38 @@ export function parsePaymentOption(value: string): { method: "ESPECES" | "WAVE" 
   }
   const method = value.slice("METHOD:".length) as "WAVE" | "ORANGE_MONEY" | "VIREMENT" | "CHEQUE";
   return { method, cashSessionId: null };
+}
+
+const NON_CASH_METHODS = ["WAVE", "ORANGE_MONEY", "VIREMENT", "CHEQUE"] as const;
+
+/**
+ * Version sure de parsePaymentOption pour les Server Actions : la valeur vient du navigateur,
+ * on verifie donc que le mode existe et que la caisse visee est bien OUVERTE et appartient a la
+ * boutique de l'utilisateur (sinon on pourrait encaisser dans une caisse fermee ou etrangere).
+ */
+export async function resolvePaymentOption(
+  tx: TxClient,
+  value: string,
+  user: { storeId: string | null }
+): Promise<ReturnType<typeof parsePaymentOption>> {
+  const option = parsePaymentOption(value);
+  if (option.cashSessionId) {
+    const session = await tx.cashSession.findUnique({
+      where: { id: option.cashSessionId },
+      include: { cashRegister: true },
+    });
+    if (!session || session.status !== "OUVERTE") {
+      throw new UserError("Cette caisse n'est pas ouverte. Choisissez une caisse ouverte ou un autre mode de paiement.");
+    }
+    if (user.storeId && session.cashRegister.storeId !== user.storeId) {
+      throw new UserError("Acces refuse : vous ne pouvez encaisser que dans une caisse de votre boutique.");
+    }
+    return option;
+  }
+  if (!(NON_CASH_METHODS as readonly string[]).includes(option.method)) {
+    throw new UserError("Mode de paiement invalide.");
+  }
+  return option;
 }
 
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {

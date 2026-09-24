@@ -3,7 +3,7 @@ import { can } from "@/lib/permissions";
 
 describe("RBAC (cahier des charges section 6)", () => {
   it("ADMIN a tous les droits (wildcard)", () => {
-    expect(can("ADMIN", "product.delete")).toBe(true);
+    expect(can("ADMIN", "product.update")).toBe(true);
     expect(can("ADMIN", "n'importe.quoi")).toBe(true);
   });
 
@@ -21,7 +21,7 @@ describe("RBAC (cahier des charges section 6)", () => {
   });
 
   it("MAGASINIER gere le stock mais pas les ventes", () => {
-    expect(can("MAGASINIER", "stock.adjust")).toBe(true);
+    expect(can("MAGASINIER", "stock.adjust")).toBe(false); // action reservee a l'admin principal
     expect(can("MAGASINIER", "sale.create")).toBe(false);
   });
 
@@ -35,5 +35,19 @@ describe("RBAC (cahier des charges section 6)", () => {
     expect(can("GERANT", "product.create")).toBe(true);
     expect(can("GERANT", "product.read")).toBe(true);
     expect(can("GERANT", "user.delete")).toBe(false); // non accorde explicitement
+  });
+
+  it("reserve les actions dangereuses a l'admin principal uniquement", () => {
+    for (const permission of ["category.delete", "debit.cancel", "ecommerceOrder.cancel", "stock.adjust", "user.create", "user.update"]) {
+      expect(can("ADMIN", permission, true)).toBe(true);
+      expect(can("ADMIN", permission)).toBe(false);
+      expect(can("GERANT", permission)).toBe(false);
+      expect(can("CAISSIER", permission, true)).toBe(false); // le drapeau seul ne suffit pas sans le role ADMIN
+    }
+  });
+
+  it("n'accorde rien de plus a l'admin principal pour les actions ordinaires", () => {
+    expect(can("ADMIN", "product.create")).toBe(true);
+    expect(can("CAISSIER", "debit.create")).toBe(true);
   });
 });

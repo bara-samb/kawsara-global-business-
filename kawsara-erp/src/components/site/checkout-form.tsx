@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MapPin, Phone, Wallet, StickyNote, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
 import { useCartStore, cartTotal } from "@/lib/cart-store";
 import { createEcommerceOrder } from "@/lib/actions/ecommerce";
+import { WhatsAppIcon } from "@/components/site/whatsapp-icon";
+import { whatsappUrl } from "@/lib/site-contact";
 
 const PAYMENT_METHODS = [
   { value: "ESPECES", label: "Especes a la livraison" },
@@ -13,22 +15,21 @@ const PAYMENT_METHODS = [
   { value: "VIREMENT", label: "Virement bancaire" },
 ];
 
-export function CheckoutForm({
-  defaultAddress,
-  defaultPhone,
-}: {
-  defaultAddress?: string;
-  defaultPhone?: string;
-}) {
+export function CheckoutForm() {
   const items = useCartStore((s) => s.items);
   const clear = useCartStore((s) => s.clear);
   const total = cartTotal(items);
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
 
-  function handleSubmit(formData: FormData) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     setError(null);
+    setIsPending(true);
+    const formData = new FormData(e.currentTarget);
+    const customerName = String(formData.get("customerName") ?? "");
+    const customerEmail = String(formData.get("customerEmail") ?? "");
     const shippingAddress = String(formData.get("shippingAddress") ?? "");
     const shippingPhone = String(formData.get("shippingPhone") ?? "");
     const notes = String(formData.get("notes") ?? "");
@@ -38,21 +39,27 @@ export function CheckoutForm({
       | "ORANGE_MONEY"
       | "VIREMENT";
 
-    startTransition(async () => {
-      try {
-        const order = await createEcommerceOrder({
-          items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
-          shippingAddress,
-          shippingPhone,
-          notes: notes || undefined,
-          paymentMethod,
-        });
-        clear();
-        router.push(`/compte/commandes/${order.id}?confirmation=1`);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Une erreur est survenue.");
+    try {
+      const order = await createEcommerceOrder({
+        items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+        customerName,
+        customerEmail,
+        shippingAddress,
+        shippingPhone,
+        notes: notes || undefined,
+        paymentMethod,
+      });
+      if ("error" in order) {
+        setError(order.error);
+        setIsPending(false);
+        return;
       }
-    });
+      clear();
+      router.push(`/commande/confirmation?reference=${encodeURIComponent(order.reference)}`);
+    } catch {
+      setError("Impossible de joindre le serveur. Verifiez votre connexion et reessayez.");
+      setIsPending(false);
+    }
   }
 
   if (items.length === 0) {
@@ -64,8 +71,16 @@ export function CheckoutForm({
   }
 
   return (
-    <form action={handleSubmit} className="grid gap-8 lg:grid-cols-3">
+    <form onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-3">
       <div className="animate-fade-in-up lg:col-span-2 space-y-4 rounded-xl border border-gray-200 bg-white p-6">
+        <div>
+          <label className="text-sm font-medium text-brand-green-900">Nom complet</label>
+          <input name="customerName" required minLength={2} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+        </div>
+        <div>
+          <label className="text-sm font-medium text-brand-green-900">E-mail (optionnel)</label>
+          <input type="email" name="customerEmail" className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+        </div>
         <div>
           <label className="flex items-center gap-1.5 text-sm font-medium text-brand-green-900">
             <MapPin className="h-4 w-4 text-brand-gold-600" />
@@ -74,7 +89,6 @@ export function CheckoutForm({
           <textarea
             name="shippingAddress"
             required
-            defaultValue={defaultAddress}
             rows={2}
             className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm transition focus:border-brand-green-500 focus:outline-none focus:ring-2 focus:ring-brand-green-100"
           />
@@ -87,7 +101,6 @@ export function CheckoutForm({
           <input
             name="shippingPhone"
             required
-            defaultValue={defaultPhone}
             className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm transition focus:border-brand-green-500 focus:outline-none focus:ring-2 focus:ring-brand-green-100"
           />
         </div>
@@ -152,6 +165,15 @@ export function CheckoutForm({
             </>
           )}
         </button>
+        <a
+          href={whatsappUrl()}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 flex items-center justify-center gap-2 text-sm font-semibold text-green-600 hover:text-green-700 hover:underline"
+        >
+          <WhatsAppIcon className="h-5 w-5" />
+          Une question ? Écrivez-nous sur WhatsApp
+        </a>
       </div>
     </form>
   );

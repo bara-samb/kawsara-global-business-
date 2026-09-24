@@ -22,7 +22,7 @@ Puis ouvrez **http://localhost:3000** dans votre navigateur.
 
 - Le **portail public** (boutique en ligne) est sur `/`.
 - L'**espace de gestion (ERP)** est sur `/erp` (necessite une connexion).
-- La page de **connexion** est sur `/connexion`.
+- La page de **connexion du personnel** est sur `/gestion` (aucun lien depuis la boutique).
 
 Rien de tout cela n'est envoye sur Internet : tout tourne sur votre machine, dans une base
 de donnees SQLite locale (`prisma/dev.db`).
@@ -89,8 +89,8 @@ reste a construire.
 - Catalogue public (`/catalogue`, produits groupes par categorie avec visuel), fiche produit,
   panier (`/panier`, persiste dans le navigateur), tunnel de commande (`/commande`) relie au
   stock reel (reservation automatique du depot ayant assez de stock).
-- Inscription client (`/inscription`) et espace client (`/compte/commandes`) avec historique et
-  detail de commande.
+- Commande sans compte client : les clients ne se connectent jamais (l'ancienne inscription
+  `/inscription` et l'espace client `/compte` sont fermes et redirigent vers le catalogue).
 - Traitement des commandes en ligne (`/erp/commandes-en-ligne`) : assignation de depot,
   confirmation, preparation (sortie de stock), livraison (facture + encaissement), annulation
   (liberation ou retour de stock).
@@ -99,7 +99,7 @@ reste a construire.
   export CSV et impression (PDF via le navigateur).
 - Notifications (`/erp/notifications`) : nouvelle commande en ligne, stock bas/rupture, facture
   soldee, dette soldee, compte verrouille — visibles aussi depuis la cloche du menu ERP.
-- Securite avancee : CAPTCHA maison sur connexion/inscription, limitation de debit (rate
+- Securite avancee : CAPTCHA maison sur la connexion, limitation de debit (rate
   limiting) anti brute-force, double authentification (2FA/TOTP) optionnelle par compte
   (`/erp/securite/2fa`), en-tetes de securite HTTP (CSP, X-Frame-Options, HSTS...). Voir
   `docs/SECURITE.md`.
@@ -165,7 +165,7 @@ src/lib/totp.ts           2FA TOTP (RFC 6238), sans dependance externe
 src/lib/notify.ts         Notifications metier
 src/proxy.ts              Protection des routes /erp et /compte + rate limiting
 src/app/page.tsx           Page d'accueil du portail public (boutique)
-src/app/connexion         Page de connexion
+src/app/gestion           Page de connexion du personnel
 src/app/erp               Espace de gestion commerciale
 src/components/site        Composants du portail public (en-tete, pied de page)
 tests/                     Suite de tests automatises (Vitest)

@@ -15,6 +15,10 @@ vi.mock("next/navigation", () => ({
     (err as { digest?: string }).digest = `NEXT_REDIRECT;replace;${url};307;`;
     throw err;
   },
+  // Comme le vrai unstable_rethrow : laisse passer les redirections interceptees par runAction.
+  unstable_rethrow: (error: unknown) => {
+    if (String((error as { digest?: string })?.digest ?? "").startsWith("NEXT_REDIRECT")) throw error;
+  },
 }));
 
 const { createDebit, transformDebitToInvoice, cancelDebit } = await import("@/lib/actions/debits");
@@ -114,6 +118,13 @@ describe("Debits : reservation sans diminuer le stock physique (criteres 58.3 et
     const beforeCancel = await prisma.stock.findUnique({ where: { productId_storeId: { productId, storeId } } });
     expect(beforeCancel?.reserved).toBe(2);
 
+    // L'annulation est une action dangereuse : un caissier est refuse, seul l'admin principal passe.
+    expect(await cancelDebit(debit!.id)).toEqual({
+      error: "Acces refuse : seul l'administrateur principal peut annuler un debit.",
+    });
+    const userId = testSession!.user.id as string;
+    await prisma.user.update({ where: { id: userId }, data: { role: "ADMIN", isPrincipalAdmin: true } });
+    testSession!.user.role = "ADMIN";
     await cancelDebit(debit!.id);
 
     const afterCancel = await prisma.stock.findUnique({ where: { productId_storeId: { productId, storeId } } });
@@ -125,7 +136,7 @@ describe("Debits : reservation sans diminuer le stock physique (criteres 58.3 et
   });
 
   it("refuse un debit dont la quantite depasse le stock disponible", async () => {
-    await expect(createDebit(debitFormData(1000))).rejects.toThrow(/stock insuffisant/i);
+    expect((await createDebit(debitFormData(1000)))?.error).toMatch(/stock insuffisant/i);
   });
 
   afterAll(async () => {

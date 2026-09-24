@@ -55,7 +55,7 @@ export default async function MaFactureDetailPage({ params }: { params: Promise<
         <div className="grid gap-4 border-b border-gray-200 pb-6 sm:grid-cols-[1fr_auto]">
           <div className="rounded-lg border border-brand-green-100 bg-brand-green-50/40 p-4">
             <div className="flex items-center gap-4">
-            <Image src="/logo-kawsara.jpg" alt="Kawsara Global Business" width={104} height={104} className="h-24 w-24 rounded-full object-cover" />
+            <Image src="/brand/logo-mark.png" alt="Kawsara Global Business" width={118} height={101} className="h-auto w-24 shrink-0" />
             <div>
               <p className="text-lg font-extrabold text-brand-green-900">KAWSARA GLOBAL BUSINESS</p>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-green-800">Import - Export</p>

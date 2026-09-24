@@ -2,7 +2,9 @@ import QRCode from "qrcode";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { otpAuthUri } from "@/lib/totp";
+import { decryptSecret } from "@/lib/secret-box";
 import { generateTwoFactorSecret, confirmTwoFactor, disableTwoFactor } from "@/lib/actions/two-factor";
+import { ActionForm } from "@/components/action-form";
 
 export default async function TwoFactorPage() {
   const session = await auth();
@@ -11,8 +13,10 @@ export default async function TwoFactorPage() {
 
   let qrDataUrl: string | null = null;
   let uri: string | null = null;
-  if (user.twoFactorSecret && !user.twoFactorEnabled) {
-    uri = otpAuthUri(user.twoFactorSecret, user.email);
+  // Secret dechiffre uniquement pour l'afficher pendant la configuration (avant activation).
+  const pendingSecret = user.twoFactorSecret && !user.twoFactorEnabled ? decryptSecret(user.twoFactorSecret) : null;
+  if (pendingSecret) {
+    uri = otpAuthUri(pendingSecret, user.email);
     qrDataUrl = await QRCode.toDataURL(uri);
   }
 
@@ -28,11 +32,19 @@ export default async function TwoFactorPage() {
         {user.twoFactorEnabled ? (
           <>
             <p className="text-sm font-semibold text-brand-green-700">✓ La double authentification est active sur ce compte.</p>
-            <form action={disableTwoFactor} className="mt-4">
+            <ActionForm
+              action={disableTwoFactor}
+              className="mt-4"
+              confirm={{
+                title: "Desactiver la double authentification ?",
+                message: "Votre compte ne sera plus protege que par votre mot de passe.",
+                confirmLabel: "Oui, desactiver",
+              }}
+            >
               <button className="rounded-md border border-red-300 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">
                 Desactiver la 2FA
               </button>
-            </form>
+            </ActionForm>
           </>
         ) : user.twoFactorSecret ? (
           <>
@@ -45,9 +57,9 @@ export default async function TwoFactorPage() {
               <img src={qrDataUrl} alt="QR code 2FA" width={200} height={200} className="mt-4" />
             )}
             <p className="mt-3 break-all rounded-md bg-gray-50 px-3 py-2 font-mono text-xs text-gray-600">
-              {user.twoFactorSecret}
+              {pendingSecret}
             </p>
-            <form action={confirmTwoFactor} className="mt-4 flex items-end gap-2">
+            <ActionForm action={confirmTwoFactor} className="mt-4 flex items-end gap-2">
               <div className="flex-1">
                 <label className="text-sm font-medium text-brand-green-900">2. Entrez le code affiche</label>
                 <input name="code" required inputMode="numeric" placeholder="123456" className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
@@ -55,14 +67,14 @@ export default async function TwoFactorPage() {
               <button className="rounded-md bg-brand-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-green-800">
                 Activer
               </button>
-            </form>
+            </ActionForm>
           </>
         ) : (
-          <form action={generateTwoFactorSecret}>
+          <ActionForm action={generateTwoFactorSecret}>
             <button className="rounded-md bg-brand-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-green-800">
               Configurer la 2FA
             </button>
-          </form>
+          </ActionForm>
         )}
       </div>
     </div>

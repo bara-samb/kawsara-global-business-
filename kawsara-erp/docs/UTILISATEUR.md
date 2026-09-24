@@ -1,21 +1,21 @@
 # Guide utilisateur — Kawsara ERP
 
-## Espace client (boutique en ligne)
+## Boutique en ligne (clients)
+
+Les clients commandent **sans creer de compte** et ne voient aucun lien de connexion.
 
 1. **Parcourir le catalogue** : `/catalogue`, produits groupes par categorie, recherche par nom.
-2. **Creer un compte** : `/inscription` (nom, email, telephone, adresse, mot de passe).
-3. **Ajouter au panier** : depuis le catalogue ou la fiche produit. Le panier est conserve dans le
+2. **Ajouter au panier** : depuis le catalogue ou la fiche produit. Le panier est conserve dans le
    navigateur (persiste entre les visites, propre a chaque appareil).
-4. **Commander** : `/panier` puis "Passer la commande" — renseigner l'adresse de livraison, le
-   telephone et le mode de paiement.
-5. **Suivre ses commandes** : `/compte/commandes` (statut : en attente, confirmee, en
-   preparation, livree, annulee).
-6. **Consulter ses factures** : `/compte/factures`, generees automatiquement a la livraison.
-7. **Modifier son profil** : `/compte/profil`.
+3. **Commander** : `/panier` puis "Passer la commande" — renseigner nom, telephone, adresse de
+   livraison et mode de paiement. Une reference de commande est affichee a la fin.
+4. Le suivi se fait par telephone avec la boutique (commande traitee dans l'ERP).
 
 ## Espace gestion (ERP)
 
-Connexion sur `/connexion` avec un compte du personnel (voir tableau des roles ci-dessous).
+Connexion sur **`/gestion`** avec un compte du personnel (voir tableau des roles ci-dessous).
+Cette adresse n'apparait nulle part sur la boutique : communiquez-la uniquement au personnel.
+Les comptes clients ne peuvent pas s'y connecter.
 
 | Role | Acces principal |
 | --- | --- |

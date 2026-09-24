@@ -1,10 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site/header";
 import { SiteFooter } from "@/components/site/footer";
 import { AddToCartButton } from "@/components/site/add-to-cart-button";
 import { prisma } from "@/lib/prisma";
+import { ProductVisual } from "@/components/site/product-visual";
 
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -48,12 +48,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           </nav>
 
           <div className="mt-6 grid gap-10 md:grid-cols-2">
-            <div className="flex h-80 items-center justify-center overflow-hidden rounded-xl bg-brand-green-50">
-              {product.images[0] ? (
-                <Image src={product.images[0].url} alt={product.name} width={400} height={320} className="h-full w-full object-cover" />
-              ) : (
-                <span className="text-sm text-gray-400">Pas d&apos;image</span>
-              )}
+            <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-brand-green-100 shadow-sm">
+              <ProductVisual src={product.images[0]?.url} alt={product.name} sizes="(min-width: 768px) 560px, 100vw" priority />
             </div>
 
             <div>
@@ -79,6 +75,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                     id: product.id,
                     reference: product.reference,
                     name: product.name,
+                    description: product.description,
                     sellingPrice: product.sellingPrice,
                     imageUrl: product.images[0]?.url,
                     availableStock,
@@ -98,12 +95,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                     href={`/catalogue/${p.id}`}
                     className="group rounded-xl border border-brand-green-100 bg-white p-4 shadow-sm transition hover:shadow-md"
                   >
-                    <div className="flex h-28 items-center justify-center overflow-hidden rounded-lg bg-brand-green-50">
-                      {p.images[0] ? (
-                        <Image src={p.images[0].url} alt={p.name} width={140} height={112} className="h-full w-full object-cover" />
-                      ) : (
-                        <span className="text-xs text-gray-400">Pas d&apos;image</span>
-                      )}
+                    <div className="relative aspect-[4/3] overflow-hidden rounded-lg">
+                      <ProductVisual src={p.images[0]?.url} alt={p.name} sizes="(min-width: 1024px) 250px, 45vw" zoomOnHover />
                     </div>
                     <p className="mt-3 font-semibold text-brand-green-900 group-hover:text-brand-gold-600">{p.name}</p>
                     <p className="mt-1 font-bold text-brand-green-800">{p.sellingPrice.toLocaleString("fr-FR")} FCFA</p>

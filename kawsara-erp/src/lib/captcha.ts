@@ -19,6 +19,20 @@ function sign(payload: string): string {
   return crypto.createHmac("sha256", secretKey()).update(payload).digest("hex");
 }
 
+// Jetons deja utilises (jusqu'a leur expiration) : un robot ne peut pas resoudre un defi une
+// fois puis rejouer la meme reponse en boucle pendant 5 minutes.
+const usedTokens = new Map<string, number>();
+
+function consumeToken(token: string, expires: number): boolean {
+  const now = Date.now();
+  if (usedTokens.size > 5_000) {
+    for (const [t, exp] of usedTokens) if (exp < now) usedTokens.delete(t);
+  }
+  if (usedTokens.has(token)) return false;
+  usedTokens.set(token, expires);
+  return true;
+}
+
 export type CaptchaChallenge = { a: number; b: number; expires: number; token: string };
 
 export function createCaptcha(): CaptchaChallenge {
@@ -36,5 +50,6 @@ export function verifyCaptcha(a: string, b: string, expires: string, token: stri
   const tokenBuf = Buffer.from(token || "");
   const expectedBuf = Buffer.from(expectedToken);
   if (tokenBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(tokenBuf, expectedBuf)) return false;
-  return Number(answer) === Number(a) + Number(b);
+  if (Number(answer) !== Number(a) + Number(b)) return false;
+  return consumeToken(token, expiresNum);
 }

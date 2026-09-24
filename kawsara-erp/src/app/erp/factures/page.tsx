@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { requirePagePermission } from "@/lib/require-permission";
 
 const ORIGIN_LABELS: Record<string, string> = {
   VENTE: "Vente comptant",
@@ -30,6 +31,7 @@ export default async function FacturesPage({
 }: {
   searchParams: Promise<{ recherche?: string }>;
 }) {
+  await requirePagePermission("invoice.read");
   const { recherche } = await searchParams;
   const query = recherche?.trim() ?? "";
   const invoices = await prisma.invoice.findMany({

@@ -14,7 +14,9 @@
     "db:studio": "prisma studio",
     "db:reset": "prisma db push --force-reset && node prisma/seed.mjs",
     "test": "vitest run",
-    "backup": "node scripts/backup-sqlite.mjs"
+    "backup": "node scripts/backup-sqlite.mjs",
+    "admin:principal": "node scripts/set-principal-admin.mjs",
+    "products:illustrations": "node scripts/apply-product-illustrations.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

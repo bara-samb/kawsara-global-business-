@@ -22,4 +22,11 @@ describe("CAPTCHA maison (cahier des charges section 47)", () => {
     const expiredExpires = String(Date.now() - 1000);
     expect(verifyCaptcha(String(c.a), String(c.b), expiredExpires, c.token, String(c.a + c.b))).toBe(false);
   });
+
+  it("refuse de rejouer un CAPTCHA deja utilise", () => {
+    const c = createCaptcha();
+    const args = [String(c.a), String(c.b), String(c.expires), c.token, String(c.a + c.b)] as const;
+    expect(verifyCaptcha(...args)).toBe(true);
+    expect(verifyCaptcha(...args)).toBe(false);
+  });
 });

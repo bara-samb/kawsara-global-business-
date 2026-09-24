@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateSecret, generateTotp, verifyTotp } from "@/lib/totp";
+import { generateSecret, generateTotp, verifyTotp, matchTotpCounter } from "@/lib/totp";
 
 describe("TOTP / 2FA (cahier des charges section 37/48)", () => {
   it("genere un secret different a chaque appel", () => {
@@ -38,5 +38,13 @@ describe("TOTP / 2FA (cahier des charges section 37/48)", () => {
     const longAgo = Date.now() - 5 * 60_000;
     const code = generateTotp(secret, longAgo);
     expect(verifyTotp(secret, code, Date.now())).toBe(false);
+  });
+
+  it("refuse de reutiliser un code deja accepte (anti-rejeu)", () => {
+    const secret = generateSecret();
+    const code = generateTotp(secret);
+    const counter = matchTotpCounter(secret, code, null);
+    expect(counter).not.toBeNull();
+    expect(matchTotpCounter(secret, code, counter)).toBeNull();
   });
 });

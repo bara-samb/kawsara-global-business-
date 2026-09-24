@@ -21,7 +21,7 @@ const ROLE_LABELS: Record<string, string> = {
 export default async function ErpLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user || session.user.role === "CLIENT") {
-    redirect("/connexion");
+    redirect("/gestion");
   }
 
   const items = ERP_NAV.filter((item) => can(session.user.role, item.permission));
@@ -35,7 +35,9 @@ export default async function ErpLayout({ children }: { children: React.ReactNod
     <div className="flex min-h-screen bg-gray-50">
       <aside className="hidden w-64 shrink-0 flex-col border-r border-brand-green-100 bg-brand-green-900 text-white md:flex print:hidden">
         <div className="flex items-center gap-2 border-b border-white/10 px-4 py-4">
-          <Image src="/logo-kawsara.jpg" alt="Kawsara" width={36} height={36} className="rounded-full" />
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-2 ring-brand-gold-400/60">
+            <Image src="/brand/logo-mark.png" alt="Kawsara" width={42} height={36} className="h-auto w-[70%]" />
+          </span>
           <div className="leading-tight">
             <p className="text-sm font-extrabold">KAWSARA</p>
             <p className="text-[10px] font-semibold text-brand-gold-400">ERP GESTION</p>
@@ -66,7 +68,7 @@ export default async function ErpLayout({ children }: { children: React.ReactNod
               signOutAction={doSignOut}
             />
             <div className="flex items-center gap-2 md:hidden">
-              <Image src="/logo-kawsara.jpg" alt="Kawsara" width={28} height={28} className="rounded-full" />
+              <Image src="/brand/logo-mark.png" alt="Kawsara" width={42} height={36} className="h-9 w-auto" />
               <span className="font-bold text-brand-green-900">Kawsara ERP</span>
             </div>
           </div>

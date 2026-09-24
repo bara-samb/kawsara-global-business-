@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { requirePagePermission } from "@/lib/require-permission";
 
 const STATUS_LABELS: Record<string, string> = {
   EN_ATTENTE: "En attente",
@@ -22,6 +23,7 @@ export default async function CommandesEnLignePage({
 }: {
   searchParams: Promise<{ statut?: string }>;
 }) {
+  await requirePagePermission("ecommerceOrder.read");
   const { statut } = await searchParams;
 
   const orders = await prisma.ecommerceOrder.findMany({

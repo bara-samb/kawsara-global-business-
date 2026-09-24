@@ -1,9 +1,17 @@
+import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/require-permission";
+import { describeForbidden } from "@/lib/permissions";
 import { parseReportRange, getFullAggregates } from "@/lib/reports";
 import { toCsv, csvResponse } from "@/lib/csv";
 
 export async function GET(request: Request) {
-  const user = await requirePermission("report.view");
+  const user = await requirePermission("report.view").catch(() => null);
+  if (!user) {
+    return new Response(describeForbidden("report.view"), {
+      status: 403,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
   const url = new URL(request.url);
   const range = parseReportRange(
     {
@@ -34,5 +42,8 @@ export async function GET(request: Request) {
     ]
   );
 
+  await prisma.auditLog.create({
+    data: { userId: user.id, action: "EXPORT", entity: "Report", metadata: "produits.csv" },
+  });
   return csvResponse(csv, "produits.csv");
 }

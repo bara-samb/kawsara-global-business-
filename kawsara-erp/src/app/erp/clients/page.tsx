@@ -2,12 +2,14 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
+import { requirePagePermission } from "@/lib/require-permission";
 
 export default async function ClientsPage({
   searchParams,
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
+  await requirePagePermission("customer.read");
   const session = await auth();
   const role = session!.user.role;
   const { q } = await searchParams;

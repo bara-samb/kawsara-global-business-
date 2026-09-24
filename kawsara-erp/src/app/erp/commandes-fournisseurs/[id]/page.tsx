@@ -4,6 +4,8 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { receiveSupplierOrder } from "@/lib/actions/supplier-orders";
 import { SupplierReceiptForm } from "@/components/erp/supplier-receipt-form";
+import { ActionForm } from "@/components/action-form";
+import { requirePagePermission } from "@/lib/require-permission";
 
 const STATUS_LABELS: Record<string, string> = {
   BROUILLON: "Brouillon",
@@ -18,6 +20,7 @@ export default async function CommandeFournisseurDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requirePagePermission("supplierOrder.read");
   const { id } = await params;
   const session = await auth();
   const role = session!.user.role;
@@ -77,7 +80,7 @@ export default async function CommandeFournisseurDetailPage({
       </div>
 
       {canReceive && (
-        <form action={receiveSupplierOrder.bind(null, order.id)} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
+        <ActionForm action={receiveSupplierOrder.bind(null, order.id)} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
           <h2 className="font-semibold text-brand-green-900">Receptionner la marchandise</h2>
           <SupplierReceiptForm
             items={order.items.map((i) => ({
@@ -90,7 +93,7 @@ export default async function CommandeFournisseurDetailPage({
           <button type="submit" className="rounded-md bg-brand-green-700 px-5 py-2.5 font-semibold text-white hover:bg-brand-green-800">
             Confirmer la reception
           </button>
-        </form>
+        </ActionForm>
       )}
 
       {order.receipts.length > 0 && (

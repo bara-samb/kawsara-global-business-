@@ -1,12 +1,14 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { requirePagePermission } from "@/lib/require-permission";
 
 export default async function VenteDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requirePagePermission("sale.read");
   const { id } = await params;
 
   const sale = await prisma.sale.findUnique({

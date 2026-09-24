@@ -2,10 +2,14 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
+import { requirePagePermission } from "@/lib/require-permission";
 
 export default async function ProduitsPage() {
+  await requirePagePermission("product.read");
   const session = await auth();
   const role = session!.user.role;
+  // Le prix d'achat revele la marge : reserve a ceux qui gerent les produits ou voient les benefices.
+  const showPurchasePrice = can(role, "product.update") || can(role, "profit.view");
 
   const products = await prisma.product.findMany({
     orderBy: { createdAt: "desc" },
@@ -39,7 +43,7 @@ export default async function ProduitsPage() {
               <th className="px-4 py-3">Reference</th>
               <th className="px-4 py-3">Nom</th>
               <th className="px-4 py-3">Categorie</th>
-              <th className="px-4 py-3">Prix achat</th>
+              {showPurchasePrice && <th className="px-4 py-3">Prix achat</th>}
               <th className="px-4 py-3">Prix vente</th>
               <th className="px-4 py-3">Stock total</th>
               <th className="px-4 py-3">En ligne</th>
@@ -59,7 +63,7 @@ export default async function ProduitsPage() {
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-gray-600">{p.category?.name ?? "-"}</td>
-                  <td className="px-4 py-3">{p.purchasePrice.toLocaleString("fr-FR")}</td>
+                  {showPurchasePrice && <td className="px-4 py-3">{p.purchasePrice.toLocaleString("fr-FR")}</td>}
                   <td className="px-4 py-3 font-semibold">{p.sellingPrice.toLocaleString("fr-FR")}</td>
                   <td className="px-4 py-3">
                     <span className={critical ? "font-semibold text-red-600" : ""}>{totalStock}</span>
@@ -84,7 +88,7 @@ export default async function ProduitsPage() {
             })}
             {products.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={showPurchasePrice ? 8 : 7} className="px-4 py-8 text-center text-gray-400">
                   Aucun produit. Creez le premier produit pour commencer.
                 </td>
               </tr>

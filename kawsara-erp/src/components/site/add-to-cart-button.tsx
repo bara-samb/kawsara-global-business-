@@ -13,6 +13,7 @@ export function AddToCartButton({
     id: string;
     reference: string;
     name: string;
+    description?: string | null;
     sellingPrice: number;
     imageUrl?: string | null;
     availableStock: number;
@@ -32,6 +33,7 @@ export function AddToCartButton({
         productId: product.id,
         reference: product.reference,
         name: product.name,
+        description: product.description,
         unitPrice: product.sellingPrice,
         imageUrl: product.imageUrl,
         maxQuantity: product.availableStock,

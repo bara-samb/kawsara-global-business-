@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { generateReference } from "@/lib/reference";
 import { requirePermission } from "@/lib/require-permission";
+import type { ActionResult } from "@/lib/errors";
+import { runAction } from "@/lib/run-action";
 
 const schema = z.object({
   name: z.string().min(2, "Le nom est obligatoire"),
@@ -23,38 +25,42 @@ function parseForm(formData: FormData) {
   });
 }
 
-export async function createSupplier(formData: FormData) {
-  const user = await requirePermission("supplier.create");
-  const data = parseForm(formData);
+export async function createSupplier(formData: FormData): Promise<ActionResult> {
+  return runAction(async () => {
+    const user = await requirePermission("supplier.create");
+    const data = parseForm(formData);
 
-  const supplier = await prisma.$transaction(async (tx) => {
-    const reference = await generateReference("supplier", tx);
-    const created = await tx.supplier.create({
-      data: { reference, name: data.name, phone: data.phone, email: data.email || null, address: data.address },
+    const supplier = await prisma.$transaction(async (tx) => {
+      const reference = await generateReference("supplier", tx);
+      const created = await tx.supplier.create({
+        data: { reference, name: data.name, phone: data.phone, email: data.email || null, address: data.address },
+      });
+      await tx.auditLog.create({
+        data: { userId: user.id, action: "CREATE", entity: "Supplier", entityId: created.id },
+      });
+      return created;
     });
-    await tx.auditLog.create({
-      data: { userId: user.id, action: "CREATE", entity: "Supplier", entityId: created.id },
-    });
-    return created;
+
+    revalidatePath("/erp/fournisseurs");
+    redirect(`/erp/fournisseurs/${supplier.id}`);
   });
-
-  revalidatePath("/erp/fournisseurs");
-  redirect(`/erp/fournisseurs/${supplier.id}`);
 }
 
-export async function updateSupplier(supplierId: string, formData: FormData) {
-  const user = await requirePermission("supplier.update");
-  const data = parseForm(formData);
+export async function updateSupplier(supplierId: string, formData: FormData): Promise<ActionResult> {
+  return runAction(async () => {
+    const user = await requirePermission("supplier.update");
+    const data = parseForm(formData);
 
-  await prisma.supplier.update({
-    where: { id: supplierId },
-    data: { name: data.name, phone: data.phone, email: data.email || null, address: data.address },
-  });
-  await prisma.auditLog.create({
-    data: { userId: user.id, action: "UPDATE", entity: "Supplier", entityId: supplierId },
-  });
+    await prisma.supplier.update({
+      where: { id: supplierId },
+      data: { name: data.name, phone: data.phone, email: data.email || null, address: data.address },
+    });
+    await prisma.auditLog.create({
+      data: { userId: user.id, action: "UPDATE", entity: "Supplier", entityId: supplierId },
+    });
 
-  revalidatePath("/erp/fournisseurs");
-  revalidatePath(`/erp/fournisseurs/${supplierId}`);
-  redirect(`/erp/fournisseurs/${supplierId}`);
+    revalidatePath("/erp/fournisseurs");
+    revalidatePath(`/erp/fournisseurs/${supplierId}`);
+    redirect(`/erp/fournisseurs/${supplierId}`);
+  });
 }

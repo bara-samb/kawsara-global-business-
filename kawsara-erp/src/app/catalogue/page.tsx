@@ -1,9 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Search, SlidersHorizontal, RotateCcw, PackageSearch } from "lucide-react";
 import { SiteHeader } from "@/components/site/header";
 import { SiteFooter } from "@/components/site/footer";
 import { AddToCartButton } from "@/components/site/add-to-cart-button";
+import { ProductVisual } from "@/components/site/product-visual";
 import { CategoryFilter } from "@/components/site/category-filter";
 import { prisma } from "@/lib/prisma";
 
@@ -123,18 +123,8 @@ export default async function CataloguePage({
                       return (
                         <div key={p.id} className="group rounded-xl border border-brand-green-100 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
                           <Link href={`/catalogue/${p.id}`}>
-                            <div className="flex h-32 items-center justify-center overflow-hidden rounded-lg bg-brand-green-50">
-                              {p.images[0] ? (
-                                <Image
-                                  src={p.images[0].url}
-                                  alt={p.name}
-                                  width={160}
-                                  height={128}
-                                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
-                                />
-                              ) : (
-                                <span className="text-xs text-gray-400">Pas d&apos;image</span>
-                              )}
+                            <div className="relative aspect-[4/3] overflow-hidden rounded-lg">
+                              <ProductVisual src={p.images[0]?.url} alt={p.name} sizes="(min-width: 1024px) 250px, (min-width: 640px) 45vw, 90vw" zoomOnHover />
                             </div>
                             <p className="mt-3 text-xs font-medium uppercase tracking-wide text-brand-gold-600">
                               {p.category?.name ?? "Divers"}
@@ -151,6 +141,7 @@ export default async function CataloguePage({
                                 id: p.id,
                                 reference: p.reference,
                                 name: p.name,
+                                description: p.description,
                                 sellingPrice: p.sellingPrice,
                                 imageUrl: p.images[0]?.url,
                                 availableStock: stock,
