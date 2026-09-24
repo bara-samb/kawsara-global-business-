@@ -28,7 +28,8 @@ export default async function ErpLayout({ children }: { children: React.ReactNod
 
   async function doSignOut() {
     "use server";
-    await signOut({ redirectTo: "/" });
+    // Retour sur la page de connexion du personnel (et non sur la boutique).
+    await signOut({ redirectTo: "/gestion?deconnecte=1" });
   }
 
   return (

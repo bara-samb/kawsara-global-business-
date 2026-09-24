@@ -2,7 +2,7 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import { AuthError, CredentialsSignin } from "next-auth";
 import type { Metadata } from "next";
-import { Mail, Lock, ShieldCheck, LogIn, AlertCircle } from "lucide-react";
+import { Mail, Lock, ShieldCheck, LogIn, AlertCircle, CheckCircle2 } from "lucide-react";
 import { auth, signIn } from "@/lib/auth";
 import { verifyCaptcha } from "@/lib/captcha";
 import { CaptchaField } from "@/components/site/captcha-field";
@@ -59,9 +59,9 @@ export const metadata: Metadata = {
 export default async function GestionLoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ erreur?: string; callbackUrl?: string }>;
+  searchParams: Promise<{ erreur?: string; callbackUrl?: string; deconnecte?: string }>;
 }) {
-  const { erreur, callbackUrl } = await searchParams;
+  const { erreur, callbackUrl, deconnecte } = await searchParams;
   const session = await auth();
   if (session?.user && session.user.role !== "CLIENT") redirect("/erp");
 
@@ -78,6 +78,12 @@ export default async function GestionLoginPage({
           <p className="animate-fade-in mt-4 flex items-start gap-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             {ERROR_MESSAGES[erreur] ?? ERROR_MESSAGES["1"]}
+          </p>
+        )}
+        {!erreur && deconnecte && (
+          <p className="animate-fade-in mt-4 flex items-start gap-2 rounded-md bg-brand-green-50 px-3 py-2 text-sm text-brand-green-700">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+            Vous avez bien ete deconnecte.
           </p>
         )}
 

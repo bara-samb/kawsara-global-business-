@@ -129,6 +129,22 @@ export function can(role: Role, permission: string, isPrincipalAdmin = false): b
 
 // Description lisible de chaque permission, pour les messages d'erreur affiches a l'utilisateur.
 const PERMISSION_LABELS: Record<string, string> = {
+  // Consultation des pages de l'ERP
+  "cash.view": "consulter les caisses",
+  "category.read": "consulter les categories",
+  "customer.read": "consulter les clients",
+  "debit.read": "consulter les debits",
+  "debt.read": "consulter les dettes clients",
+  "ecommerceOrder.read": "consulter les commandes en ligne",
+  "invoice.read": "consulter les factures",
+  "notification.read": "consulter les notifications",
+  "product.read": "consulter les produits",
+  "sale.read": "consulter les ventes",
+  "security.view": "consulter le centre de securite",
+  "stock.read": "consulter le stock",
+  "supplier.read": "consulter les fournisseurs",
+  "supplierOrder.read": "consulter les commandes fournisseurs",
+  "user.read": "consulter la liste des utilisateurs",
   "cash.open": "ouvrir une caisse",
   "cash.close": "fermer une caisse",
   "category.create": "creer une categorie",
