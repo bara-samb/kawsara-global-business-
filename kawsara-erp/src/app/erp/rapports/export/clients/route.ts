@@ -16,11 +16,17 @@ export async function GET(request: Request) {
 
   const { customers } = await getFullAggregates(range);
   const csv = toCsv(
-    customers.map((c) => ({ client: c.name, commandes: c.orders, chiffreAffaires: c.revenue })),
+    customers.map((c) => ({
+      client: c.name,
+      commandes: c.orders,
+      chiffreAffaires: c.revenue,
+      benefice: c.profit,
+    })),
     [
       { key: "client", label: "Client" },
       { key: "commandes", label: "Nombre de factures" },
       { key: "chiffreAffaires", label: "Chiffre d'affaires (FCFA)" },
+      { key: "benefice", label: "Benefice (FCFA)" },
     ]
   );
 

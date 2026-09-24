@@ -40,9 +40,20 @@ export async function getFullAggregates(range: ReportRange) {
   const byDay = new Map<string, number>();
   const byProduct = new Map<
     string,
-    { id: string; name: string; reference: string; quantity: number; revenue: number; profit: number }
+    {
+      id: string;
+      name: string;
+      reference: string;
+      quantity: number;
+      revenue: number;
+      cost: number;
+      profit: number;
+    }
   >();
-  const byCustomer = new Map<string, { name: string; revenue: number; orders: number }>();
+  const byCustomer = new Map<
+    string,
+    { id: string | null; name: string; revenue: number; profit: number; orders: number }
+  >();
 
   for (const invoice of invoices) {
     revenue += invoice.total;
@@ -51,8 +62,10 @@ export async function getFullAggregates(range: ReportRange) {
 
     const customerKey = invoice.customerId ?? "anonyme";
     const customerEntry = byCustomer.get(customerKey) ?? {
+      id: invoice.customerId,
       name: invoice.customer?.name ?? "Client comptant",
       revenue: 0,
+      profit: 0,
       orders: 0,
     };
     customerEntry.revenue += invoice.total;
@@ -60,18 +73,22 @@ export async function getFullAggregates(range: ReportRange) {
     byCustomer.set(customerKey, customerEntry);
 
     for (const item of invoice.items) {
-      const itemProfit = (item.unitPrice - item.product.purchasePrice) * item.quantity - item.discount;
+      const itemCost = item.product.purchasePrice * item.quantity;
+      const itemProfit = item.unitPrice * item.quantity - item.discount - itemCost;
       profit += itemProfit;
+      customerEntry.profit += itemProfit;
       const entry = byProduct.get(item.productId) ?? {
         id: item.productId,
         name: item.product.name,
         reference: item.product.reference,
         quantity: 0,
         revenue: 0,
+        cost: 0,
         profit: 0,
       };
       entry.quantity += item.quantity;
       entry.revenue += item.total;
+      entry.cost += itemCost;
       entry.profit += itemProfit;
       byProduct.set(item.productId, entry);
     }
@@ -88,6 +105,12 @@ export async function getFullAggregates(range: ReportRange) {
   const products = [...byProduct.values()].sort((a, b) => b.revenue - a.revenue);
   const customers = [...byCustomer.values()].sort((a, b) => b.revenue - a.revenue);
 
+  // Produit le plus vendu = plus grande quantite vendue (a egalite, le plus gros CA).
+  const bestSellingProduct =
+    [...products].sort((a, b) => b.quantity - a.quantity || b.revenue - a.revenue)[0] ?? null;
+  // Meilleur client = plus gros CA, hors ventes comptant sans client identifie.
+  const bestCustomer = customers.find((c) => c.id !== null) ?? null;
+
   return {
     invoiceCount: invoices.length,
     revenue,
@@ -97,15 +120,8 @@ export async function getFullAggregates(range: ReportRange) {
     revenueByDay,
     products,
     customers,
-  };
-}
-
-export async function getReportSummary(range: ReportRange) {
-  const aggregates = await getFullAggregates(range);
-  return {
-    ...aggregates,
-    topProducts: aggregates.products.slice(0, 10),
-    topCustomers: aggregates.customers.slice(0, 10),
+    bestSellingProduct,
+    bestCustomer,
   };
 }
 

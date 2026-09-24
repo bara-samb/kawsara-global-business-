@@ -21,6 +21,7 @@ export async function GET(request: Request) {
       nom: p.name,
       quantite: p.quantity,
       chiffreAffaires: p.revenue,
+      coutAchat: p.cost,
       marge: p.profit,
     })),
     [
@@ -28,7 +29,8 @@ export async function GET(request: Request) {
       { key: "nom", label: "Produit" },
       { key: "quantite", label: "Quantite vendue" },
       { key: "chiffreAffaires", label: "Chiffre d'affaires (FCFA)" },
-      { key: "marge", label: "Marge (FCFA)" },
+      { key: "coutAchat", label: "Cout d'achat (FCFA)" },
+      { key: "marge", label: "Benefice (FCFA)" },
     ]
   );
 

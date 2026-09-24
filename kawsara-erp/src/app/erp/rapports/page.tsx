@@ -1,9 +1,21 @@
-import { Download, TrendingUp, Percent, Receipt, ShoppingBasket, PackageX, UserX, AlertTriangle } from "lucide-react";
+import Link from "next/link";
+import {
+  Download,
+  TrendingUp,
+  Percent,
+  Receipt,
+  ShoppingBasket,
+  PackageX,
+  UserX,
+  AlertTriangle,
+  Trophy,
+  Crown,
+} from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   parseReportRange,
-  getReportSummary,
+  getFullAggregates,
   getLowStockReport,
   getDormantProducts,
   getAtRiskCustomers,
@@ -42,7 +54,7 @@ export default async function RapportsPage({
 
   const range = parseReportRange(params, forcedStoreId);
   const [summary, lowStock, stores] = await Promise.all([
-    getReportSummary(range),
+    getFullAggregates(range),
     getLowStockReport(range.storeId),
     forcedStoreId ? Promise.resolve([]) : prisma.store.findMany({ orderBy: { name: "asc" } }),
   ]);
@@ -50,6 +62,8 @@ export default async function RapportsPage({
     getDormantProducts(summary.products.map((p) => p.id), 10),
     getAtRiskCustomers(10),
   ]);
+
+  const productsByProfit = [...summary.products].sort((a, b) => b.profit - a.profit);
 
   const exportQuery = `from=${toDateInput(range.from)}&to=${toDateInput(range.to)}${range.storeId ? `&storeId=${range.storeId}` : ""}`;
 
@@ -132,60 +146,132 @@ export default async function RapportsPage({
         </div>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-brand-green-900">Top produits</p>
-            <ExportLink href={`/erp/rapports/export/produits?${exportQuery}`} label="Exporter CSV" />
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-green-100 text-brand-green-700">
+            <Trophy className="h-5 w-5" />
           </div>
-          <table className="mt-3 min-w-full text-sm">
-            <thead className="text-left text-xs font-semibold uppercase text-gray-500">
+          <p className="mt-3 text-xs font-medium uppercase tracking-wide text-gray-500">Produit le plus vendu</p>
+          {summary.bestSellingProduct ? (
+            <>
+              <p className="mt-1 text-lg font-bold text-brand-green-900">
+                <Link href={`/erp/produits/${summary.bestSellingProduct.id}`} className="hover:underline">
+                  {summary.bestSellingProduct.name}
+                </Link>
+              </p>
+              <p className="text-xs text-gray-500">
+                {summary.bestSellingProduct.quantity} vendu(s) · CA {fcfa(summary.bestSellingProduct.revenue)} · Benefice{" "}
+                <span className="font-semibold text-brand-green-700">{fcfa(summary.bestSellingProduct.profit)}</span>
+              </p>
+            </>
+          ) : (
+            <p className="mt-1 text-sm text-gray-400">Aucune vente sur la periode.</p>
+          )}
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-gold-100 text-brand-gold-700">
+            <Crown className="h-5 w-5" />
+          </div>
+          <p className="mt-3 text-xs font-medium uppercase tracking-wide text-gray-500">Meilleur client</p>
+          {summary.bestCustomer?.id ? (
+            <>
+              <p className="mt-1 text-lg font-bold text-brand-green-900">
+                <Link href={`/erp/clients/${summary.bestCustomer.id}`} className="hover:underline">
+                  {summary.bestCustomer.name}
+                </Link>
+              </p>
+              <p className="text-xs text-gray-500">
+                {summary.bestCustomer.orders} facture(s) · CA{" "}
+                <span className="font-semibold text-brand-green-700">{fcfa(summary.bestCustomer.revenue)}</span>
+              </p>
+            </>
+          ) : (
+            <p className="mt-1 text-sm text-gray-400">Aucun client identifie sur la periode.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-brand-green-900">Benefice par produit</p>
+          <ExportLink href={`/erp/rapports/export/produits?${exportQuery}`} label="Exporter CSV" />
+        </div>
+        <div className="mt-3 max-h-[28rem] overflow-auto print:max-h-none">
+          <table className="min-w-full text-sm">
+            <thead className="sticky top-0 bg-white text-left text-xs font-semibold uppercase text-gray-500">
               <tr>
-                <th className="py-1.5">Produit</th>
-                <th className="py-1.5">Qte</th>
-                <th className="py-1.5">CA</th>
-                <th className="py-1.5">Marge</th>
+                <th className="py-1.5 pr-3">Produit</th>
+                <th className="py-1.5 pr-3 text-right">Qte vendue</th>
+                <th className="py-1.5 pr-3 text-right">CA</th>
+                <th className="py-1.5 pr-3 text-right">Cout d&apos;achat</th>
+                <th className="py-1.5 pr-3 text-right">Benefice</th>
+                <th className="py-1.5 text-right">Marge</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {summary.topProducts.map((p) => (
-                <tr key={p.reference}>
-                  <td className="py-1.5">{p.name}</td>
-                  <td className="py-1.5">{p.quantity}</td>
-                  <td className="py-1.5 font-medium">{fcfa(p.revenue)}</td>
-                  <td className="py-1.5 text-brand-green-700">{fcfa(p.profit)}</td>
+              {productsByProfit.map((p) => (
+                <tr key={p.id}>
+                  <td className="py-1.5 pr-3">
+                    <Link href={`/erp/produits/${p.id}`} className="hover:underline">{p.name}</Link>
+                    <span className="ml-1 text-xs text-gray-400">{p.reference}</span>
+                  </td>
+                  <td className="py-1.5 pr-3 text-right">{p.quantity}</td>
+                  <td className="py-1.5 pr-3 text-right font-medium">{fcfa(p.revenue)}</td>
+                  <td className="py-1.5 pr-3 text-right text-gray-500">{fcfa(p.cost)}</td>
+                  <td className={`py-1.5 pr-3 text-right font-semibold ${p.profit < 0 ? "text-red-600" : "text-brand-green-700"}`}>
+                    {fcfa(p.profit)}
+                  </td>
+                  <td className="py-1.5 text-right text-gray-500">
+                    {p.revenue > 0 ? `${((p.profit / p.revenue) * 100).toFixed(1)}%` : "-"}
+                  </td>
                 </tr>
               ))}
-              {summary.topProducts.length === 0 && (
-                <tr><td colSpan={4} className="py-6 text-center text-gray-400">Aucune vente sur la periode.</td></tr>
+              {productsByProfit.length === 0 && (
+                <tr><td colSpan={6} className="py-6 text-center text-gray-400">Aucune vente sur la periode.</td></tr>
               )}
             </tbody>
           </table>
         </div>
+      </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-brand-green-900">Top clients</p>
-            <ExportLink href={`/erp/rapports/export/clients?${exportQuery}`} label="Exporter CSV" />
-          </div>
-          <table className="mt-3 min-w-full text-sm">
-            <thead className="text-left text-xs font-semibold uppercase text-gray-500">
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-brand-green-900">Chiffre d&apos;affaires par client</p>
+          <ExportLink href={`/erp/rapports/export/clients?${exportQuery}`} label="Exporter CSV" />
+        </div>
+        <div className="mt-3 max-h-[28rem] overflow-auto print:max-h-none">
+          <table className="min-w-full text-sm">
+            <thead className="sticky top-0 bg-white text-left text-xs font-semibold uppercase text-gray-500">
               <tr>
-                <th className="py-1.5">Client</th>
-                <th className="py-1.5">Commandes</th>
-                <th className="py-1.5">CA</th>
+                <th className="py-1.5 pr-3">Client</th>
+                <th className="py-1.5 pr-3 text-right">Factures</th>
+                <th className="py-1.5 pr-3 text-right">CA</th>
+                <th className="py-1.5 pr-3 text-right">Part du CA</th>
+                <th className="py-1.5 text-right">Benefice</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {summary.topCustomers.map((c) => (
-                <tr key={c.name}>
-                  <td className="py-1.5">{c.name}</td>
-                  <td className="py-1.5">{c.orders}</td>
-                  <td className="py-1.5 font-medium">{fcfa(c.revenue)}</td>
+              {summary.customers.map((c) => (
+                <tr key={c.id ?? "anonyme"}>
+                  <td className="py-1.5 pr-3">
+                    {c.id ? (
+                      <Link href={`/erp/clients/${c.id}`} className="hover:underline">{c.name}</Link>
+                    ) : (
+                      <span className="italic text-gray-500">{c.name}</span>
+                    )}
+                  </td>
+                  <td className="py-1.5 pr-3 text-right">{c.orders}</td>
+                  <td className="py-1.5 pr-3 text-right font-medium">{fcfa(c.revenue)}</td>
+                  <td className="py-1.5 pr-3 text-right text-gray-500">
+                    {summary.revenue > 0 ? `${((c.revenue / summary.revenue) * 100).toFixed(1)}%` : "-"}
+                  </td>
+                  <td className={`py-1.5 text-right ${c.profit < 0 ? "text-red-600" : "text-brand-green-700"}`}>
+                    {fcfa(c.profit)}
+                  </td>
                 </tr>
               ))}
-              {summary.topCustomers.length === 0 && (
-                <tr><td colSpan={3} className="py-6 text-center text-gray-400">Aucune vente sur la periode.</td></tr>
+              {summary.customers.length === 0 && (
+                <tr><td colSpan={5} className="py-6 text-center text-gray-400">Aucune vente sur la periode.</td></tr>
               )}
             </tbody>
           </table>
