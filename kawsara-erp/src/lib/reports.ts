@@ -4,19 +4,30 @@ import type { InvoiceStatus } from "@prisma/client";
 
 export type ReportRange = { from: Date; to: Date; storeId: string | null };
 
-const REVENUE_STATUSES: InvoiceStatus[] = ["VALIDEE", "PAYEE", "PARTIELLEMENT_PAYEE"];
+// CA = ventes facturees : une facture impayee (debit transforme, commande en ligne validee) est
+// deja une vente, son encaissement est suivi a part (dettes clients).
+export const REVENUE_STATUSES: InvoiceStatus[] = ["VALIDEE", "PAYEE", "PARTIELLEMENT_PAYEE", "IMPAYEE"];
+
+function parseDateParam(value: string | undefined): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
 
 export function parseReportRange(
   params: { from?: string; to?: string; storeId?: string },
   forcedStoreId: string | null
 ): ReportRange {
-  const to = params.to ? new Date(params.to) : new Date();
+  // Une date absente ou invalide dans l'URL retombe sur les 30 derniers jours.
+  const to = parseDateParam(params.to) ?? new Date();
   to.setHours(23, 59, 59, 999);
-  const from = params.from ? new Date(params.from) : new Date(to);
-  if (!params.from) {
+  const parsedFrom = parseDateParam(params.from);
+  const from = parsedFrom ?? new Date(to);
+  if (!parsedFrom) {
     from.setDate(from.getDate() - 29);
   }
   from.setHours(0, 0, 0, 0);
+  if (from > to) from.setTime(new Date(to).setHours(0, 0, 0, 0));
   return { from, to, storeId: forcedStoreId ?? params.storeId ?? null };
 }
 

@@ -11,6 +11,7 @@ import { checkLowStockAndNotify } from "@/lib/notify";
 import { UserError, type ActionResult } from "@/lib/errors";
 import { runAction } from "@/lib/run-action";
 import { assertPricesAllowed } from "@/lib/pricing";
+import { sumQuantitiesByProduct } from "@/lib/line-items";
 
 const itemSchema = z.object({
   productId: z.string().min(1),
@@ -44,14 +45,16 @@ export async function createSale(formData: FormData): Promise<ActionResult> {
     const belowCost = await assertPricesAllowed(data.items, data.discount);
 
     const sale = await prisma.$transaction(async (tx) => {
-      for (const item of data.items) {
+      // Quantites cumulees par produit : un meme produit saisi sur plusieurs lignes ne doit pas
+      // passer la verification ligne par ligne puis rendre le stock negatif.
+      for (const [productId, quantity] of sumQuantitiesByProduct(data.items)) {
         const stock = await tx.stock.findUnique({
-          where: { productId_storeId: { productId: item.productId, storeId: data.storeId } },
+          where: { productId_storeId: { productId, storeId: data.storeId } },
         });
         const available = (stock?.quantity ?? 0) - (stock?.reserved ?? 0);
-        if (available < item.quantity) {
-          const product = await tx.product.findUnique({ where: { id: item.productId } });
-          throw new UserError(`Stock insuffisant pour "${product?.name ?? item.productId}" (disponible : ${available}).`);
+        if (available < quantity) {
+          const product = await tx.product.findUnique({ where: { id: productId } });
+          throw new UserError(`Stock insuffisant pour "${product?.name ?? productId}" (disponible : ${available}).`);
         }
       }
 

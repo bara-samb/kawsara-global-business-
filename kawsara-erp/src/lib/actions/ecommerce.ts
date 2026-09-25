@@ -12,6 +12,7 @@ import { auth } from "@/lib/auth";
 import { hitRateLimit, currentRequestIp } from "@/lib/rate-limit";
 import { UserError, humanizeError, type ActionResult } from "@/lib/errors";
 import { runAction } from "@/lib/run-action";
+import { sumQuantitiesByProduct } from "@/lib/line-items";
 
 // ---------- Boutique publique : passage de commande ----------
 
@@ -60,7 +61,13 @@ export async function createEcommerceOrder(
 
 async function placeEcommerceOrder(input: CheckoutInput) {
   const session = await auth();
-  const data = checkoutSchema.parse(input);
+  const parsed = checkoutSchema.parse(input);
+  // Fusionne les lignes d'un meme produit pour que la verification de stock porte sur la
+  // quantite totale commandee.
+  const data = {
+    ...parsed,
+    items: [...sumQuantitiesByProduct(parsed.items)].map(([productId, quantity]) => ({ productId, quantity })),
+  };
   const ipAddress = await currentRequestIp();
 
   // Limite de frequence : par compte pour un client connecte, par adresse IP sinon.

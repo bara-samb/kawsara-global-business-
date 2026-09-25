@@ -26,6 +26,9 @@ export async function settleDebt(debtId: string, formData: FormData): Promise<Ac
     await prisma.$transaction(async (tx) => {
       const debt = await tx.customerDebt.findUnique({ where: { id: debtId }, include: { invoice: true } });
       if (!debt) throw new UserError("Dette introuvable.");
+      if (debt.status === "ANNULEE" || debt.invoice.status === "ANNULEE") {
+        throw new UserError("Impossible d'encaisser une dette annulee.");
+      }
       assertStoreAccess(user, debt.invoice.storeId);
       if (debt.remainingAmount <= 0) throw new UserError("Cette dette est deja soldee.");
 

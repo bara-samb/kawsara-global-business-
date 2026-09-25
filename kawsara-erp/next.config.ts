@@ -8,7 +8,8 @@ const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
-  "img-src 'self' data: blob:",
+  // Images produits stockees sur Vercel Blob (voir src/lib/actions/products.ts).
+  "img-src 'self' data: blob: https://*.public.blob.vercel-storage.com",
   "font-src 'self' fonts.gstatic.com",
   "connect-src 'self'" + (isDev ? " ws:" : ""),
   "frame-ancestors 'none'",
@@ -32,6 +33,7 @@ const nextConfig: NextConfig = {
     root: path.resolve(__dirname),
   },
   images: {
+    remotePatterns: [{ protocol: "https", hostname: "*.public.blob.vercel-storage.com" }],
     dangerouslyAllowSVG: true,
     contentDispositionType: "attachment",
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",

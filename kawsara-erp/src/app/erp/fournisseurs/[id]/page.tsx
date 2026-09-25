@@ -26,6 +26,7 @@ export default async function FournisseurDetailPage({
     include: {
       products: { orderBy: { createdAt: "desc" }, take: 20 },
       orders: { orderBy: { createdAt: "desc" }, take: 20 },
+      _count: { select: { products: true, orders: true } },
     },
   });
   if (!supplier) notFound();
@@ -42,11 +43,11 @@ export default async function FournisseurDetailPage({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="text-xs uppercase text-gray-500">Produits fournis</p>
-          <p className="mt-1 text-lg font-bold text-brand-green-900">{supplier.products.length}</p>
+          <p className="mt-1 text-lg font-bold text-brand-green-900">{supplier._count.products}</p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="text-xs uppercase text-gray-500">Commandes fournisseur</p>
-          <p className="mt-1 text-lg font-bold text-brand-green-900">{supplier.orders.length}</p>
+          <p className="mt-1 text-lg font-bold text-brand-green-900">{supplier._count.orders}</p>
         </div>
       </div>
 

@@ -25,6 +25,13 @@ async function ref(kind) {
 }
 
 async function main() {
+  // Donnees fictives et mots de passe connus : interdit sur une base de production
+  // (utiliser prisma/init-prod.mjs a la place).
+  if (process.env.NODE_ENV === "production" || /postgres/i.test(process.env.DATABASE_URL ?? "")) {
+    if (process.env.ALLOW_DEMO_SEED !== "1") {
+      throw new Error("Seed de demonstration refuse sur une base de production : utilisez npm run db:init-prod.");
+    }
+  }
   console.log("Seed : creation des donnees de demonstration Kawsara Global Business...");
 
   const storePrincipal = await prisma.store.create({

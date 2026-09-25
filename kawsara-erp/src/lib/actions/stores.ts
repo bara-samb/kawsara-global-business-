@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { generateReference } from "@/lib/reference";
 import { requirePermission, assertStoreAccess } from "@/lib/require-permission";
-import type { ActionResult } from "@/lib/errors";
+import { UserError, type ActionResult } from "@/lib/errors";
 import { runAction } from "@/lib/run-action";
 
 const storeSchema = z.object({
@@ -60,6 +60,11 @@ export async function adjustStock(formData: FormData): Promise<ActionResult> {
         where: { productId_storeId: { productId: data.productId, storeId: data.storeId } },
       });
       const previousQuantity = existing?.quantity ?? 0;
+      if (data.newQuantity < (existing?.reserved ?? 0)) {
+        throw new UserError(
+          `Impossible : ${existing?.reserved} unite(s) sont reservees (debits / commandes en ligne) dans ce depot.`
+        );
+      }
       const delta = data.newQuantity - previousQuantity;
 
       await tx.stock.upsert({
@@ -68,7 +73,10 @@ export async function adjustStock(formData: FormData): Promise<ActionResult> {
         update: { quantity: data.newQuantity },
       });
 
-      const reference = await generateReference("product", tx);
+      // Reference du mouvement = reference du produit (ne pas consommer le compteur des produits).
+      const product = await tx.product.findUnique({ where: { id: data.productId }, select: { reference: true } });
+      if (!product) throw new UserError("Produit introuvable.");
+      const reference = product.reference;
       await tx.auditLog.create({
         data: {
           userId: user.id,

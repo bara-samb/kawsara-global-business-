@@ -8,6 +8,7 @@ import { requirePermission, assertStoreAccess } from "@/lib/require-permission";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { put, del } from "@vercel/blob";
 import { UserError, type ActionResult } from "@/lib/errors";
 import { runAction } from "@/lib/run-action";
 
@@ -60,7 +61,17 @@ function parseCreateForm(formData: FormData) {
   });
 }
 
-async function saveProductImage(fileValue: FormDataEntryValue | null) {
+/**
+ * Stockage des images produits. Sur Vercel, le disque est ephemere : les fichiers ecrits dans
+ * public/ disparaissent a chaque deploiement. Des qu'un store Vercel Blob est connecte au projet
+ * (BLOB_READ_WRITE_TOKEN ou BLOB_STORE_ID), les images y sont envoyees ; sinon (developpement,
+ * Docker avec volume) elles restent dans public/uploads/products.
+ */
+const isBlobStorageConfigured = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
+
+type SavedImage = { url: string; remove: () => Promise<void> };
+
+async function saveProductImage(fileValue: FormDataEntryValue | null): Promise<SavedImage | null> {
   if (!(fileValue instanceof File) || fileValue.size === 0) return null;
   if (fileValue.size > 5 * 1024 * 1024) {
     throw new UserError("L'image ne doit pas depasser 5 Mo.");
@@ -75,13 +86,24 @@ async function saveProductImage(fileValue: FormDataEntryValue | null) {
   if (!extension) {
     throw new UserError("Format d'image non pris en charge. Utilisez JPG, PNG ou WebP.");
   }
+  const filename = `${randomUUID()}${extension}`;
+
+  if (isBlobStorageConfigured()) {
+    const blob = await put(`products/${filename}`, fileValue, { access: "public", contentType: fileValue.type });
+    return { url: blob.url, remove: () => del(blob.url) };
+  }
+
+  if (process.env.VERCEL) {
+    throw new UserError(
+      "Stockage des images non configure : connectez un store Vercel Blob au projet (Storage > Blob)."
+    );
+  }
 
   const directory = path.join(process.cwd(), "public", "uploads", "products");
   await mkdir(directory, { recursive: true });
-  const filename = `${randomUUID()}${extension}`;
   const filePath = path.join(directory, filename);
   await writeFile(filePath, Buffer.from(await fileValue.arrayBuffer()));
-  return { filePath, url: `/uploads/products/${filename}` };
+  return { url: `/uploads/products/${filename}`, remove: () => unlink(filePath) };
 }
 
 export async function createProduct(formData: FormData): Promise<ActionResult> {
@@ -137,9 +159,8 @@ export async function createProduct(formData: FormData): Promise<ActionResult> {
 
       revalidatePath("/erp/produits");
       revalidatePath("/catalogue");
-      return product;
     } catch (error) {
-      if (image) await unlink(image.filePath).catch(() => undefined);
+      if (image) await image.remove().catch(() => undefined);
       throw error;
     }
     redirect(`/erp/produits/${product.id}`);

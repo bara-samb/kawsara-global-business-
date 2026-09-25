@@ -18,18 +18,19 @@ const STATUS_STYLES: Record<string, string> = {
   ANNULEE: "bg-red-100 text-red-700",
 };
 
+const ORDER_STATUSES = ["EN_ATTENTE", "CONFIRMEE", "EN_PREPARATION", "LIVREE", "ANNULEE"] as const;
+
 export default async function CommandesEnLignePage({
   searchParams,
 }: {
   searchParams: Promise<{ statut?: string }>;
 }) {
   await requirePagePermission("ecommerceOrder.read");
-  const { statut } = await searchParams;
+  const { statut: statutParam } = await searchParams;
+  const statut = ORDER_STATUSES.find((s) => s === statutParam);
 
   const orders = await prisma.ecommerceOrder.findMany({
-    where: statut
-      ? { status: statut as "EN_ATTENTE" | "CONFIRMEE" | "EN_PREPARATION" | "LIVREE" | "ANNULEE" }
-      : {},
+    where: statut ? { status: statut } : {},
     orderBy: { createdAt: "desc" },
     include: { customer: true, store: true, items: true },
     take: 200,

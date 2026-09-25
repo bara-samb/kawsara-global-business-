@@ -18,6 +18,10 @@ async function requireSession() {
 export async function generateTwoFactorSecret(): Promise<ActionResult> {
   return runAction(async () => {
     const user = await requireSession();
+    const record = await prisma.user.findUnique({ where: { id: user.id }, select: { twoFactorEnabled: true } });
+    if (record?.twoFactorEnabled) {
+      throw new UserError("La double authentification est deja active : desactivez-la d'abord.");
+    }
     const secret = generateSecret();
     await prisma.$transaction([
       prisma.user.update({

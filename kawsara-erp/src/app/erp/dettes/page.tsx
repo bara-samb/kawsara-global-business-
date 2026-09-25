@@ -22,20 +22,23 @@ const STATUS_LABELS: Record<string, string> = {
   ANNULEE: "Annulee",
 };
 
+const DEBT_STATUSES = ["NON_PAYEE", "PARTIELLEMENT_PAYEE", "PAYEE", "EN_RETARD", "ANNULEE"] as const;
+
 export default async function DettesPage({
   searchParams,
 }: {
   searchParams: Promise<{ statut?: string }>;
 }) {
   await requirePagePermission("debt.read");
-  const { statut } = await searchParams;
+  const { statut: statutParam } = await searchParams;
+  const statut = DEBT_STATUSES.find((s) => s === statutParam);
   const session = await auth();
   const role = session!.user.role;
   const canSettle = can(role, "debt.settle");
 
   const [debts, paymentOptions] = await Promise.all([
     prisma.customerDebt.findMany({
-      where: statut ? { status: statut as "NON_PAYEE" | "PARTIELLEMENT_PAYEE" | "PAYEE" | "EN_RETARD" | "ANNULEE" } : {},
+      where: statut ? { status: statut } : {},
       orderBy: { createdAt: "desc" },
       include: { customer: true, invoice: true },
       take: 200,
@@ -98,7 +101,7 @@ export default async function DettesPage({
                   </td>
                   {canSettle && (
                     <td className="px-4 py-3">
-                      {debt.remainingAmount > 0 ? (
+                      {debt.remainingAmount > 0 && debt.status !== "ANNULEE" ? (
                         <ActionForm action={settle} className="flex flex-wrap items-center gap-1.5">
                           <input
                             type="number"
@@ -108,7 +111,7 @@ export default async function DettesPage({
                             defaultValue={debt.remainingAmount}
                             className="w-24 rounded-md border border-gray-300 px-2 py-1 text-xs"
                           />
-                          <select name="paymentOption" className="rounded-md border border-gray-300 px-2 py-1 text-xs">
+                          <select name="paymentOption" required className="rounded-md border border-gray-300 px-2 py-1 text-xs">
                             {paymentOptions.map((o) => (
                               <option key={o.value} value={o.value}>{o.label}</option>
                             ))}

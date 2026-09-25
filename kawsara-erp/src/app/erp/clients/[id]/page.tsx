@@ -4,12 +4,22 @@ import { prisma } from "@/lib/prisma";
 import { updateCustomer } from "@/lib/actions/customers";
 import { ActionForm } from "@/components/action-form";
 import { requirePagePermission } from "@/lib/require-permission";
+import { PAYMENT_METHOD_LABELS } from "@/lib/payment-options";
 
 const DEBT_LABELS: Record<string, string> = {
   NON_PAYEE: "Non payee",
   PARTIELLEMENT_PAYEE: "Partiellement payee",
   PAYEE: "Payee",
   EN_RETARD: "En retard",
+  ANNULEE: "Annulee",
+};
+
+const INVOICE_LABELS: Record<string, string> = {
+  PAYEE: "Payee",
+  VALIDEE: "Validee",
+  PARTIELLEMENT_PAYEE: "Partiellement payee",
+  IMPAYEE: "Impayee",
+  BROUILLON: "Brouillon",
   ANNULEE: "Annulee",
 };
 
@@ -54,18 +64,27 @@ export default async function ClientDetailPage({
   if (!customer) notFound();
 
   const purchases = await prisma.invoice.findMany({
-    where: { customerId: id, createdAt: { gte: periodStart(period) } },
+    where: { customerId: id, status: { not: "ANNULEE" }, createdAt: { gte: periodStart(period) } },
     include: { items: { include: { product: true } } },
     orderBy: { createdAt: "desc" },
   });
   const purchasesTotal = purchases.reduce((s, i) => s + i.total, 0);
 
-  const totalInvoiced = customer.invoices.reduce((s, i) => s + i.total, 0);
-  const totalPaid = customer.invoices.reduce((s, i) => s + i.paidAmount, 0);
+  // Totaux calcules sur TOUTES les factures non annulees (et pas seulement les 20 affichees).
+  const [totals, unpaidInvoiceCount] = await Promise.all([
+    prisma.invoice.aggregate({
+      where: { customerId: id, status: { not: "ANNULEE" } },
+      _sum: { total: true, paidAmount: true },
+    }),
+    prisma.invoice.count({
+      where: { customerId: id, status: { notIn: ["PAYEE", "ANNULEE"] } },
+    }),
+  ]);
+  const totalInvoiced = totals._sum.total ?? 0;
+  const totalPaid = totals._sum.paidAmount ?? 0;
   const totalDue = customer.debts
     .filter((d) => d.status !== "PAYEE" && d.status !== "ANNULEE")
     .reduce((s, d) => s + d.remainingAmount, 0);
-  const unpaidInvoiceCount = customer.invoices.filter((i) => i.status !== "PAYEE" && i.status !== "ANNULEE").length;
 
   const boundUpdate = updateCustomer.bind(null, customer.id);
 
@@ -160,7 +179,7 @@ export default async function ClientDetailPage({
                   <ul className="mt-2 space-y-1 pl-4 text-xs text-gray-500">
                     {d.payments.map((p) => (
                       <li key={p.id}>
-                        {new Date(p.createdAt).toLocaleDateString("fr-FR")} — {p.amount.toLocaleString("fr-FR")} FCFA ({p.method})
+                        {new Date(p.createdAt).toLocaleDateString("fr-FR")} — {p.amount.toLocaleString("fr-FR")} FCFA ({PAYMENT_METHOD_LABELS[p.method] ?? p.method})
                       </li>
                     ))}
                   </ul>
@@ -193,7 +212,7 @@ export default async function ClientDetailPage({
                   </td>
                   <td className="py-2">{new Date(i.createdAt).toLocaleDateString("fr-FR")}</td>
                   <td className="py-2">{i.total.toLocaleString("fr-FR")} FCFA</td>
-                  <td className="py-2">{i.status}</td>
+                  <td className="py-2">{INVOICE_LABELS[i.status] ?? i.status}</td>
                 </tr>
               ))}
             </tbody>

@@ -26,6 +26,7 @@ export async function addInvoicePayment(invoiceId: string, formData: FormData): 
     await prisma.$transaction(async (tx) => {
       const invoice = await tx.invoice.findUnique({ where: { id: invoiceId }, include: { debt: true } });
       if (!invoice) throw new UserError("Facture introuvable.");
+      if (invoice.status === "ANNULEE") throw new UserError("Impossible d'encaisser une facture annulee.");
       assertStoreAccess(user, invoice.storeId);
       if (invoice.remainingAmount <= 0) throw new UserError("Cette facture est deja soldee.");
 

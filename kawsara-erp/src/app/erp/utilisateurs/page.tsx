@@ -113,6 +113,8 @@ export default async function UtilisateursPage({
           <tbody className="divide-y divide-gray-100">
             {users.map((u) => {
               const toggle = toggleUserActive.bind(null, u.id, !u.active);
+              const unlock = toggleUserActive.bind(null, u.id, true);
+              const locked = !!u.lockedUntil && u.lockedUntil > new Date();
               return (
                 <tr key={u.id} className="hover:bg-brand-green-50/50">
                   <td className="px-4 py-3 font-medium text-brand-green-900">
@@ -127,12 +129,17 @@ export default async function UtilisateursPage({
                   <td className="px-4 py-3">{ROLE_LABELS[u.role]}</td>
                   <td className="px-4 py-3 text-gray-600">{u.store?.name ?? "-"}</td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${u.active ? "bg-brand-green-100 text-brand-green-700" : "bg-red-100 text-red-700"}`}>
-                      {u.active ? "Actif" : (u.lockedUntil && u.lockedUntil > new Date() ? "Verrouille" : "Desactive")}
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${u.active && !locked ? "bg-brand-green-100 text-brand-green-700" : "bg-red-100 text-red-700"}`}>
+                      {!u.active ? "Desactive" : locked ? "Verrouille" : "Actif"}
                     </span>
                   </td>
                   {canUpdate && (
                     <td className="px-4 py-3 text-right">
+                      {u.active && locked && (
+                        <ActionForm action={unlock} className="mb-1">
+                          <button className="text-xs font-medium text-brand-gold-700 hover:underline">Deverrouiller</button>
+                        </ActionForm>
+                      )}
                       {!(u.active && u.isPrincipalAdmin) && (
                         <ActionForm
                           action={toggle}

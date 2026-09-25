@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MapPin, Phone, Wallet, StickyNote, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
-import { useCartStore, cartTotal } from "@/lib/cart-store";
+import { useCartStore, useCartHydrated, cartTotal } from "@/lib/cart-store";
 import { createEcommerceOrder } from "@/lib/actions/ecommerce";
 import { WhatsAppIcon } from "@/components/site/whatsapp-icon";
 import { whatsappUrl } from "@/lib/site-contact";
@@ -22,6 +22,7 @@ export function CheckoutForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
+  const hydrated = useCartHydrated();
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -60,6 +61,10 @@ export function CheckoutForm() {
       setError("Impossible de joindre le serveur. Verifiez votre connexion et reessayez.");
       setIsPending(false);
     }
+  }
+
+  if (!hydrated) {
+    return <p className="text-sm text-gray-400">Chargement du panier...</p>;
   }
 
   if (items.length === 0) {

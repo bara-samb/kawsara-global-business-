@@ -73,6 +73,25 @@ describe("Ventes comptant : blocage si stock insuffisant (critere d'acceptation 
     expect(saleCount).toBe(0);
   });
 
+  it("cumule les lignes d'un meme produit : 2 lignes de 2 ne passent pas quand il n'en reste que 2", async () => {
+    const fd = new FormData();
+    fd.set("storeId", storeId);
+    fd.set("discount", "0");
+    fd.set("paymentOption", "METHOD:WAVE");
+    fd.set(
+      "items",
+      JSON.stringify([
+        { productId, quantity: 2, unitPrice: 2000 },
+        { productId, quantity: 2, unitPrice: 2000 },
+      ])
+    );
+
+    expect((await createSale(fd))?.error).toMatch(/stock insuffisant/i);
+
+    const stock = await prisma.stock.findUnique({ where: { productId_storeId: { productId, storeId } } });
+    expect(stock?.quantity).toBe(2); // jamais negatif
+  });
+
   it("refuse a un caissier de vendre dans une autre boutique que la sienne", async () => {
     const fd = new FormData();
     fd.set("storeId", "autre-boutique-id");
