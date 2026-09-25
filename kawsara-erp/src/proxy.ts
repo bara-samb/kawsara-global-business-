@@ -45,9 +45,7 @@ export default async function proxy(req: NextRequest) {
 }
 
 export const config = {
+  // Pas d'option `runtime` : depuis Next 16, le proxy tourne toujours sur Node.js (compatible
+  // avec bcrypt et Prisma utilises par @/lib/auth), et la declarer fait echouer le build.
   matcher: ["/erp/:path*", "/compte/:path*", "/api/auth/callback/credentials", "/inscription"],
-  // Le middleware par defaut tourne sur l'Edge Runtime, incompatible avec bcrypt et le moteur
-  // natif de Prisma utilises par la configuration NextAuth complete (@/lib/auth). On force donc
-  // le runtime Node.js ici (necessaire notamment pour un deploiement Vercel).
-  runtime: "nodejs",
 };

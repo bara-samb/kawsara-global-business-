@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export type LineItemProduct = {
   id: string;
@@ -18,8 +18,6 @@ type Row = {
   unitPrice: number;
 };
 
-let rowKeySeq = 0;
-
 export function LineItemsEditor({
   products,
   priceLabel = "Prix unitaire",
@@ -29,15 +27,15 @@ export function LineItemsEditor({
   priceLabel?: string;
   fieldName?: string;
 }) {
+  // Cles deterministes (identiques cote serveur et client) pour eviter une erreur d'hydratation.
+  const nextKey = useRef(1);
   const [rows, setRows] = useState<Row[]>(() => [
-    { key: rowKeySeq++, productId: "", productQuery: "", quantity: 1, unitPrice: 0 },
+    { key: 0, productId: "", productQuery: "", quantity: 1, unitPrice: 0 },
   ]);
 
   function addRow() {
-    setRows((r) => [
-      ...r,
-      { key: rowKeySeq++, productId: "", productQuery: "", quantity: 1, unitPrice: 0 },
-    ]);
+    const key = nextKey.current++;
+    setRows((r) => [...r, { key, productId: "", productQuery: "", quantity: 1, unitPrice: 0 }]);
   }
 
   function removeRow(key: number) {

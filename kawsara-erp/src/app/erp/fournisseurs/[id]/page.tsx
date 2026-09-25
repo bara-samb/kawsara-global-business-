@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { updateSupplier } from "@/lib/actions/suppliers";
 
 const ORDER_LABELS: Record<string, string> = {
@@ -17,12 +19,15 @@ export default async function FournisseurDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const session = await auth();
+  const canEdit = can(session!.user.role, "supplier.update");
 
   const supplier = await prisma.supplier.findUnique({
     where: { id },
     include: {
       products: { orderBy: { createdAt: "desc" }, take: 20 },
       orders: { orderBy: { createdAt: "desc" }, take: 20 },
+      _count: { select: { products: true, orders: true } },
     },
   });
   if (!supplier) notFound();
@@ -39,11 +44,11 @@ export default async function FournisseurDetailPage({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="text-xs uppercase text-gray-500">Produits fournis</p>
-          <p className="mt-1 text-lg font-bold text-brand-green-900">{supplier.products.length}</p>
+          <p className="mt-1 text-lg font-bold text-brand-green-900">{supplier._count.products}</p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <p className="text-xs uppercase text-gray-500">Commandes fournisseur</p>
-          <p className="mt-1 text-lg font-bold text-brand-green-900">{supplier.orders.length}</p>
+          <p className="mt-1 text-lg font-bold text-brand-green-900">{supplier._count.orders}</p>
         </div>
       </div>
 
@@ -90,6 +95,7 @@ export default async function FournisseurDetailPage({
         )}
       </div>
 
+      {canEdit && (
       <form action={boundUpdate} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
         <h2 className="font-semibold text-brand-green-900">Modifier la fiche fournisseur</h2>
         <div>
@@ -114,6 +120,7 @@ export default async function FournisseurDetailPage({
           Enregistrer
         </button>
       </form>
+      )}
     </div>
   );
 }

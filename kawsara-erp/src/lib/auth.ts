@@ -5,7 +5,9 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { notifyRoles } from "@/lib/notify";
 import { verifyTotp } from "@/lib/totp";
+import { canAccessErpPath } from "@/lib/erp-access";
 import type { Role } from "@prisma/client";
+import "next-auth/jwt";
 
 class TwoFactorRequiredError extends CredentialsSignin {
   code = "2fa_required";
@@ -159,7 +161,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       if (isErp) {
         if (!isLoggedIn) return false;
-        return auth.user.role !== "CLIENT";
+        // Un client connecte (redirection par defaut vers /erp apres connexion) va sur son espace.
+        if (auth.user.role === "CLIENT") return Response.redirect(new URL("/compte", request.nextUrl));
+        // Page non autorisee pour ce role (URL tapee a la main) : retour au tableau de bord.
+        if (!canAccessErpPath(auth.user.role, path)) {
+          return Response.redirect(new URL("/erp?acces=refuse", request.nextUrl));
+        }
+        return true;
       }
       if (isCompte) {
         return isLoggedIn;

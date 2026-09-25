@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     invoices.map((inv) => ({
       reference: inv.reference,
       date: inv.createdAt.toLocaleDateString("fr-FR"),
-      client: inv.customer?.name ?? "Client comptant",
+      client: inv.customer?.name ?? inv.customerName ?? "Client comptant",
       boutique: inv.store.name,
       total: inv.total,
       statut: inv.status,

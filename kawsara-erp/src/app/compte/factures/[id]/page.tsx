@@ -59,7 +59,7 @@ export default async function MaFactureDetailPage({ params }: { params: Promise<
             <div>
               <p className="text-lg font-extrabold text-brand-green-900">KAWSARA GLOBAL BUSINESS</p>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-green-800">Import - Export</p>
-              <p className="mt-1 text-[9px] text-gray-500">RCCM : SN.DBL.2024.A.3.963</p>
+              <p className="mt-1 text-[9px] text-gray-500">RCCM : SN.DBL.2024.A.3953</p>
               <p className="text-[9px] text-gray-500">NINEA : 011.539.064</p>
               <p className="text-xs text-gray-500">{invoice.store.name}</p>
               {invoice.store.phone && <p className="text-xs text-gray-500">{invoice.store.phone}</p>}

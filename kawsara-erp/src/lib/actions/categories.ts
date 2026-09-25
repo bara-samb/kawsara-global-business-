@@ -33,6 +33,10 @@ export async function deleteCategory(categoryId: string) {
   if (inUse > 0) {
     throw new Error("Impossible de supprimer : des produits utilisent cette categorie.");
   }
+  const children = await prisma.category.count({ where: { parentId: categoryId } });
+  if (children > 0) {
+    throw new Error("Impossible de supprimer : cette categorie contient des sous-categories.");
+  }
   await prisma.category.delete({ where: { id: categoryId } });
   await prisma.auditLog.create({
     data: { userId: user.id, action: "DELETE", entity: "Category", entityId: categoryId },

@@ -12,3 +12,11 @@ describe("Modes de paiement (cahier des charges section 23)", () => {
     expect(parsePaymentOption("METHOD:CHEQUE")).toEqual({ method: "CHEQUE", cashSessionId: null });
   });
 });
+
+describe("Modes de paiement : valeurs invalides", () => {
+  it("refuse une methode inconnue ou mal formee", () => {
+    expect(() => parsePaymentOption("METHOD:BITCOIN")).toThrow();
+    expect(() => parsePaymentOption("WAVE")).toThrow();
+    expect(() => parsePaymentOption("CASH:")).toThrow();
+  });
+});

@@ -5,9 +5,10 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { generateReference } from "@/lib/reference";
 import { requirePermission } from "@/lib/require-permission";
-import { parsePaymentOption } from "@/lib/payment-options";
+import { resolvePaymentOption } from "@/lib/payment-options";
 import { notifyRoles, checkLowStockAndNotify } from "@/lib/notify";
 import { auth } from "@/lib/auth";
+import { sumQuantitiesByProduct } from "@/lib/line-items";
 
 // ---------- Boutique publique : passage de commande ----------
 
@@ -28,7 +29,13 @@ export type CheckoutInput = z.infer<typeof checkoutSchema>;
 
 export async function createEcommerceOrder(input: CheckoutInput) {
   const user = await requirePermission("shop.order");
-  const data = checkoutSchema.parse(input);
+  const parsed = checkoutSchema.parse(input);
+  // Fusionne les lignes d'un meme produit pour que la verification de stock porte sur la
+  // quantite totale commandee.
+  const data = {
+    ...parsed,
+    items: [...sumQuantitiesByProduct(parsed.items)].map(([productId, quantity]) => ({ productId, quantity })),
+  };
 
   // Verification de stock + choix du depot + reservation execute dans une seule transaction
   // pour eviter qu'une commande simultanee ne double-vende le meme stock (cahier des charges 39/51).
@@ -311,7 +318,7 @@ export async function markDeliveredEcommerceOrder(orderId: string, formData: For
       throw new Error("La commande doit etre validee avant d'etre livree.");
     }
 
-    const { method, cashSessionId } = parsePaymentOption(data.paymentOption);
+    const { method, cashSessionId } = await resolvePaymentOption(tx, data.paymentOption);
     const invoice = order.invoice;
     if (invoice.remainingAmount <= 0) {
       throw new Error("Cette facture est deja soldee.");
@@ -352,7 +359,10 @@ export async function cancelEcommerceOrder(orderId: string, formData: FormData) 
   const data = cancelSchema.parse({ reason: formData.get("reason") });
 
   await prisma.$transaction(async (tx) => {
-    const order = await tx.ecommerceOrder.findUnique({ where: { id: orderId }, include: { items: true } });
+    const order = await tx.ecommerceOrder.findUnique({
+      where: { id: orderId },
+      include: { items: true, invoice: true },
+    });
     if (!order || order.status === "LIVREE" || order.status === "ANNULEE") {
       throw new Error("Cette commande ne peut pas etre annulee dans son etat actuel.");
     }
@@ -417,6 +427,7 @@ export async function cancelEcommerceOrder(orderId: string, formData: FormData) 
 
   revalidatePath(`/erp/commandes-en-ligne/${orderId}`);
   revalidatePath("/erp/commandes-en-ligne");
+  revalidatePath("/erp/factures");
   revalidatePath("/erp/stock");
 }
 

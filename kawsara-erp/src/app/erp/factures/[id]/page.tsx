@@ -44,7 +44,8 @@ export default async function FactureDetailPage({
   });
   if (!invoice) notFound();
 
-  const paymentOptions = invoice.remainingAmount > 0 ? await getPaymentOptions(prisma) : [];
+  const canReceivePayment = invoice.remainingAmount > 0 && invoice.status !== "ANNULEE";
+  const paymentOptions = canReceivePayment ? await getPaymentOptions(prisma) : [];
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -61,7 +62,7 @@ export default async function FactureDetailPage({
             <div>
               <p className="text-lg font-extrabold text-brand-green-900">KAWSARA GLOBAL BUSINESS</p>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-green-800">Import - Export</p>
-              <p className="mt-1 text-[9px] text-gray-500">RCCM : SN.DBL.2024.A.3.963</p>
+              <p className="mt-1 text-[9px] text-gray-500">RCCM : SN.DBL.2024.A.3953</p>
               <p className="text-[9px] text-gray-500">NINEA : 011.539.064</p>
               <p className="text-xs text-gray-500">{invoice.store.name}</p>
               <p className="text-xs text-gray-500">{invoice.store.address}</p>
@@ -158,7 +159,7 @@ export default async function FactureDetailPage({
         </div>
       </div>
 
-      {invoice.remainingAmount > 0 && can(role, "payment.create") && (
+      {canReceivePayment && can(role, "payment.create") && (
         <form action={addInvoicePayment.bind(null, invoice.id)} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6 print:hidden">
           <h2 className="font-semibold text-brand-green-900">Enregistrer un reglement</h2>
           <div className="grid grid-cols-2 gap-4">

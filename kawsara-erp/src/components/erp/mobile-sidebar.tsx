@@ -19,12 +19,12 @@ export function MobileSidebar({
   roleLabel: string;
   signOutAction: () => Promise<void>;
 }) {
-  const [open, setOpen] = useState(false);
   const pathname = usePathname();
-
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+  // Le menu est lie a la page sur laquelle il a ete ouvert : il se referme donc tout seul a la
+  // navigation, sans setState dans un effet.
+  const [openedOn, setOpenedOn] = useState<string | null>(null);
+  const open = openedOn === pathname;
+  const setOpen = (value: boolean) => setOpenedOn(value ? pathname : null);
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";

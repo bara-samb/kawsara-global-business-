@@ -133,7 +133,6 @@ export async function createProduct(formData: FormData) {
 
     revalidatePath("/erp/produits");
     revalidatePath("/catalogue");
-    return product;
   } catch (error) {
     if (image) await unlink(image.filePath).catch(() => undefined);
     throw error;

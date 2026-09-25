@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { generateReference } from "@/lib/reference";
 import { requirePermission } from "@/lib/require-permission";
-import { parsePaymentOption } from "@/lib/payment-options";
+import { resolvePaymentOption } from "@/lib/payment-options";
 import { notifyRoles } from "@/lib/notify";
 
 const paySchema = z.object({
@@ -23,10 +23,11 @@ export async function addInvoicePayment(invoiceId: string, formData: FormData) {
   await prisma.$transaction(async (tx) => {
     const invoice = await tx.invoice.findUnique({ where: { id: invoiceId }, include: { debt: true } });
     if (!invoice) throw new Error("Facture introuvable.");
+    if (invoice.status === "ANNULEE") throw new Error("Impossible d'encaisser une facture annulee.");
     if (invoice.remainingAmount <= 0) throw new Error("Cette facture est deja soldee.");
 
     const amount = Math.min(data.amount, invoice.remainingAmount);
-    const { method, cashSessionId } = parsePaymentOption(data.paymentOption);
+    const { method, cashSessionId } = await resolvePaymentOption(tx, data.paymentOption);
 
     const paymentReference = await generateReference("payment", tx);
     await tx.payment.create({

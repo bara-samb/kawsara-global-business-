@@ -1,5 +1,10 @@
 function escapeCsvValue(value: unknown): string {
-  const str = value === null || value === undefined ? "" : String(value);
+  let str = value === null || value === undefined ? "" : String(value);
+  // Neutralise les formules (=, +, -, @) dans les textes saisis par les utilisateurs, pour
+  // qu'Excel ne les execute pas a l'ouverture du fichier (injection CSV).
+  if (typeof value === "string" && /^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
   if (/[",\n;]/.test(str)) {
     return `"${str.replace(/"/g, '""')}"`;
   }

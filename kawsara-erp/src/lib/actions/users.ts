@@ -28,6 +28,11 @@ export async function createStaffUser(formData: FormData) {
     storeId: formData.get("storeId") || undefined,
   });
 
+  // Seul un administrateur peut creer un autre administrateur (pas d'elevation de privileges).
+  if (data.role === "ADMIN" && admin.role !== "ADMIN") {
+    throw new Error("Seul un administrateur peut creer un compte administrateur.");
+  }
+
   const email = data.email.toLowerCase();
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -60,6 +65,14 @@ export async function createStaffUser(formData: FormData) {
 
 export async function toggleUserActive(userId: string, active: boolean) {
   const admin = await requirePermission("user.update");
+  if (userId === admin.id) {
+    throw new Error("Vous ne pouvez pas modifier l'etat de votre propre compte.");
+  }
+  const target = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (!target) throw new Error("Utilisateur introuvable.");
+  if (target.role === "ADMIN" && admin.role !== "ADMIN") {
+    throw new Error("Seul un administrateur peut modifier un compte administrateur.");
+  }
   await prisma.user.update({ where: { id: userId }, data: { active, lockedUntil: null, failedLogins: 0 } });
   await prisma.auditLog.create({
     data: { userId: admin.id, action: active ? "ACTIVATE" : "DEACTIVATE", entity: "User", entityId: userId },

@@ -9,6 +9,8 @@ const STATUS_LABELS: Record<string, string> = {
   ANNULEE: "Annulee",
 };
 
+const ORDER_STATUSES = ["EN_ATTENTE", "CONFIRMEE", "EN_PREPARATION", "LIVREE", "ANNULEE"] as const;
+
 const STATUS_STYLES: Record<string, string> = {
   EN_ATTENTE: "bg-brand-gold-50 text-brand-gold-700",
   CONFIRMEE: "bg-brand-green-100 text-brand-green-700",
@@ -22,12 +24,11 @@ export default async function CommandesEnLignePage({
 }: {
   searchParams: Promise<{ statut?: string }>;
 }) {
-  const { statut } = await searchParams;
+  const { statut: statutParam } = await searchParams;
+  const statut = ORDER_STATUSES.find((s) => s === statutParam);
 
   const orders = await prisma.ecommerceOrder.findMany({
-    where: statut
-      ? { status: statut as "EN_ATTENTE" | "CONFIRMEE" | "EN_PREPARATION" | "LIVREE" | "ANNULEE" }
-      : {},
+    where: statut ? { status: statut } : {},
     orderBy: { createdAt: "desc" },
     include: { customer: true, store: true, items: true },
     take: 200,

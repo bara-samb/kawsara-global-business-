@@ -54,6 +54,11 @@ export async function adjustStock(formData: FormData) {
       where: { productId_storeId: { productId: data.productId, storeId: data.storeId } },
     });
     const previousQuantity = existing?.quantity ?? 0;
+    if (data.newQuantity < (existing?.reserved ?? 0)) {
+      throw new Error(
+        `Impossible : ${existing?.reserved} unite(s) sont reservees (debits / commandes en ligne) dans ce depot.`
+      );
+    }
     const delta = data.newQuantity - previousQuantity;
 
     await tx.stock.upsert({
@@ -62,18 +67,22 @@ export async function adjustStock(formData: FormData) {
       update: { quantity: data.newQuantity },
     });
 
-    const reference = await generateReference("product", tx);
     if (delta !== 0) {
+      const product = await tx.product.findUnique({ where: { id: data.productId }, select: { reference: true } });
+      if (!product) throw new Error("Produit introuvable.");
       await tx.stockMovement.create({
         data: {
           productId: data.productId,
           storeId: data.storeId,
           type: "CORRECTION",
           quantity: delta,
-          reference,
+          reference: product.reference,
           reason: data.reason,
           userId: user.id,
         },
+      });
+      await tx.auditLog.create({
+        data: { userId: user.id, action: "ADJUST_STOCK", entity: "Stock", entityId: `${data.productId}:${data.storeId}` },
       });
     }
   });

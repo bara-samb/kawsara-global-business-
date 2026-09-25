@@ -23,6 +23,8 @@ export default async function UtilisateursPage({
   const role = session!.user.role;
   const canCreate = can(role, "user.create");
   const canUpdate = can(role, "user.update");
+  const isAdmin = role === "ADMIN";
+  const now = new Date();
 
   const [users, stores] = await Promise.all([
     prisma.user.findMany({
@@ -66,7 +68,7 @@ export default async function UtilisateursPage({
               <option value="MAGASINIER">Magasinier</option>
               <option value="COMPTABLE">Comptable</option>
               <option value="VENDEUR">Vendeur</option>
-              <option value="ADMIN">Administrateur</option>
+              {isAdmin && <option value="ADMIN">Administrateur</option>}
             </select>
           </div>
           <div>
@@ -101,6 +103,10 @@ export default async function UtilisateursPage({
           <tbody className="divide-y divide-gray-100">
             {users.map((u) => {
               const toggle = toggleUserActive.bind(null, u.id, !u.active);
+              const unlock = toggleUserActive.bind(null, u.id, true);
+              const locked = !!u.lockedUntil && u.lockedUntil > now;
+              // Pas d'action sur son propre compte, ni sur un administrateur si on ne l'est pas.
+              const manageable = u.id !== session!.user.id && (isAdmin || u.role !== "ADMIN");
               return (
                 <tr key={u.id} className="hover:bg-brand-green-50/50">
                   <td className="px-4 py-3 font-medium text-brand-green-900">{u.name}</td>
@@ -108,17 +114,26 @@ export default async function UtilisateursPage({
                   <td className="px-4 py-3">{ROLE_LABELS[u.role]}</td>
                   <td className="px-4 py-3 text-gray-600">{u.store?.name ?? "-"}</td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${u.active ? "bg-brand-green-100 text-brand-green-700" : "bg-red-100 text-red-700"}`}>
-                      {u.active ? "Actif" : (u.lockedUntil && u.lockedUntil > new Date() ? "Verrouille" : "Desactive")}
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${u.active && !locked ? "bg-brand-green-100 text-brand-green-700" : "bg-red-100 text-red-700"}`}>
+                      {!u.active ? "Desactive" : locked ? "Verrouille" : "Actif"}
                     </span>
                   </td>
                   {canUpdate && (
                     <td className="px-4 py-3 text-right">
-                      <form action={toggle}>
-                        <button className="text-xs font-medium text-brand-green-700 hover:underline">
-                          {u.active ? "Desactiver" : "Reactiver"}
-                        </button>
-                      </form>
+                      {manageable && (
+                        <div className="flex justify-end gap-3">
+                          {u.active && locked && (
+                            <form action={unlock}>
+                              <button className="text-xs font-medium text-brand-gold-700 hover:underline">Deverrouiller</button>
+                            </form>
+                          )}
+                          <form action={toggle}>
+                            <button className="text-xs font-medium text-brand-green-700 hover:underline">
+                              {u.active ? "Desactiver" : "Reactiver"}
+                            </button>
+                          </form>
+                        </div>
+                      )}
                     </td>
                   )}
                 </tr>

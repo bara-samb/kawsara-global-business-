@@ -3,13 +3,18 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ShoppingCart, Trash2, ArrowRight, ArrowLeft } from "lucide-react";
-import { useCartStore, cartTotal } from "@/lib/cart-store";
+import { useCartStore, useCartHydrated, cartTotal } from "@/lib/cart-store";
 
 export function PanierView() {
   const items = useCartStore((s) => s.items);
   const setQuantity = useCartStore((s) => s.setQuantity);
   const removeItem = useCartStore((s) => s.removeItem);
   const total = cartTotal(items);
+  const hydrated = useCartHydrated();
+
+  if (!hydrated) {
+    return <p className="mt-8 text-sm text-gray-400">Chargement du panier...</p>;
+  }
 
   if (items.length === 0) {
     return (
@@ -51,7 +56,11 @@ export function PanierView() {
               min={1}
               max={item.maxQuantity}
               value={item.quantity}
-              onChange={(e) => setQuantity(item.productId, Number(e.target.value))}
+              onChange={(e) => {
+                // Champ vide pendant la saisie : on ne retire pas l'article (bouton poubelle pour ca).
+                const quantity = Math.floor(Number(e.target.value));
+                if (quantity >= 1) setQuantity(item.productId, quantity);
+              }}
               className="w-16 rounded-md border border-gray-300 px-2 py-1.5 text-sm transition focus:border-brand-green-500 focus:outline-none focus:ring-2 focus:ring-brand-green-100"
             />
             <p className="w-24 text-right font-semibold text-brand-green-900">

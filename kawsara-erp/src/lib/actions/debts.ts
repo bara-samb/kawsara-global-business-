@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { generateReference } from "@/lib/reference";
 import { requirePermission } from "@/lib/require-permission";
-import { parsePaymentOption } from "@/lib/payment-options";
+import { resolvePaymentOption } from "@/lib/payment-options";
 import { notifyRoles } from "@/lib/notify";
 
 const paySchema = z.object({
@@ -23,10 +23,13 @@ export async function settleDebt(debtId: string, formData: FormData) {
   await prisma.$transaction(async (tx) => {
     const debt = await tx.customerDebt.findUnique({ where: { id: debtId }, include: { invoice: true } });
     if (!debt) throw new Error("Dette introuvable.");
+    if (debt.status === "ANNULEE" || debt.invoice.status === "ANNULEE") {
+      throw new Error("Impossible d'encaisser une dette annulee.");
+    }
     if (debt.remainingAmount <= 0) throw new Error("Cette dette est deja soldee.");
 
     const amount = Math.min(data.amount, debt.remainingAmount);
-    const { method, cashSessionId } = parsePaymentOption(data.paymentOption);
+    const { method, cashSessionId } = await resolvePaymentOption(tx, data.paymentOption);
 
     const debtPaymentReference = await generateReference("debtPayment", tx);
     await tx.debtPayment.create({

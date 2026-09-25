@@ -5,7 +5,8 @@ import { toCsv, csvResponse } from "@/lib/csv";
 export async function GET(request: Request) {
   const user = await requirePermission("report.view");
   const url = new URL(request.url);
-  const storeId = url.searchParams.get("storeId") ?? user.storeId;
+  // Un employe rattache a une boutique ne voit que la sienne, quel que soit le parametre d'URL.
+  const storeId = user.storeId ?? url.searchParams.get("storeId") ?? null;
 
   const lowStock = await getLowStockReport(storeId);
   const csv = toCsv(

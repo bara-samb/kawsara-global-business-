@@ -12,6 +12,7 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
+import { REVENUE_STATUSES } from "@/lib/reports";
 
 function fcfa(n: number) {
   return `${n.toLocaleString("fr-FR")} FCFA`;
@@ -25,10 +26,10 @@ async function getStats(storeId: string | null) {
       prisma.customer.count(),
       prisma.stock.findMany({
         where: storeId ? { storeId } : {},
-        include: { product: true },
+        include: { product: true, store: true },
       }),
       prisma.invoice.findMany({
-        where: { status: { in: ["VALIDEE", "PAYEE", "PARTIELLEMENT_PAYEE"] }, ...storeFilter },
+        where: { status: { in: REVENUE_STATUSES }, ...storeFilter },
         select: { total: true, paidAmount: true, createdAt: true },
       }),
       prisma.customerDebt.aggregate({
@@ -52,7 +53,7 @@ async function getStats(storeId: string | null) {
       criticalItems: criticalItems
         .sort((a, b) => a.quantity - b.quantity)
         .slice(0, 8)
-        .map((s) => ({ name: s.product.name, quantity: s.quantity, minThreshold: s.product.minThreshold })),
+        .map((s) => ({ id: s.id, name: `${s.product.name} — ${s.store.name}`, quantity: s.quantity, minThreshold: s.product.minThreshold })),
       revenueToday,
       revenueTotal,
       totalDebt: debts._sum.remainingAmount ?? 0,
@@ -64,7 +65,7 @@ async function getStats(storeId: string | null) {
       productCount: 0,
       customerCount: 0,
       criticalStock: 0,
-      criticalItems: [] as { name: string; quantity: number; minThreshold: number }[],
+      criticalItems: [] as { id: string; name: string; quantity: number; minThreshold: number }[],
       revenueToday: 0,
       revenueTotal: 0,
       totalDebt: 0,
@@ -74,7 +75,12 @@ async function getStats(storeId: string | null) {
   }
 }
 
-export default async function ErpDashboardPage() {
+export default async function ErpDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ acces?: string }>;
+}) {
+  const { acces } = await searchParams;
   const session = await auth();
   const role = session!.user.role;
   const stats = await getStats(session!.user.storeId);
@@ -96,6 +102,12 @@ export default async function ErpDashboardPage() {
         Bienvenue, {session!.user.name}. Voici la situation commerciale
         {session!.user.storeId ? " de votre boutique" : " consolidee"}.
       </p>
+
+      {acces === "refuse" && (
+        <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+          Acces refuse : votre role ne permet pas d&apos;ouvrir cette page.
+        </p>
+      )}
 
       {!stats.ready && (
         <p className="mt-4 rounded-md bg-brand-gold-50 px-3 py-2 text-sm text-brand-gold-700">
@@ -143,7 +155,7 @@ export default async function ErpDashboardPage() {
           </p>
           <ul className="mt-3 divide-y divide-gray-100 text-sm">
             {stats.criticalItems.map((item) => (
-              <li key={item.name} className="flex items-center justify-between py-2">
+              <li key={item.id} className="flex items-center justify-between py-2">
                 <span>{item.name}</span>
                 <span className={item.quantity <= 0 ? "font-semibold text-red-600" : "font-semibold text-brand-gold-700"}>
                   {item.quantity <= 0 ? "Rupture" : `${item.quantity} / seuil ${item.minThreshold}`}

@@ -14,12 +14,12 @@ export type SiteNavItem = { href: string; label: string; iconKey: SiteIconKey };
 const ICONS = { home: Home, catalogue: Store, about: Info, contact: Phone, dashboard: LayoutDashboard, account: User, login: LogIn };
 
 export function MobileMenu({ items }: { items: SiteNavItem[] }) {
-  const [open, setOpen] = useState(false);
   const pathname = usePathname();
-
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+  // Le menu est lie a la page sur laquelle il a ete ouvert : il se referme donc tout seul a la
+  // navigation, sans setState dans un effet.
+  const [openedOn, setOpenedOn] = useState<string | null>(null);
+  const open = openedOn === pathname;
+  const setOpen = (value: boolean) => setOpenedOn(value ? pathname : null);
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";

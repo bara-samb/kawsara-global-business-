@@ -18,6 +18,7 @@ export default async function ClientsPage({
           OR: [
             { name: { contains: q } },
             { reference: { contains: q } },
+            { phone: { contains: q } },
           ],
         }
       : undefined,
@@ -47,7 +48,7 @@ export default async function ClientsPage({
           type="text"
           name="q"
           defaultValue={q}
-          placeholder="Rechercher par reference ou par nom..."
+          placeholder="Rechercher par reference, nom ou telephone..."
           className="w-full max-w-sm rounded-md border border-gray-300 px-3 py-2 text-sm"
         />
         <button type="submit" className="rounded-md border border-brand-green-700 px-4 py-2 text-sm font-semibold text-brand-green-700 hover:bg-brand-green-50">

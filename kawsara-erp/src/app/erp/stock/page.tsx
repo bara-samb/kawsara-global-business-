@@ -13,6 +13,7 @@ export default async function StockPage({
   const showCriticalOnly = critique === "1";
   const session = await auth();
   const role = session!.user.role;
+  const canAdjust = can(role, "stock.adjust");
 
   const stores = await prisma.store.findMany({
     orderBy: { createdAt: "asc" },
@@ -23,6 +24,12 @@ export default async function StockPage({
       },
     },
   });
+
+  // Produits proposables pour une premiere mise en stock dans un depot (sinon un nouveau depot
+  // reste vide : seul le depot choisi a la creation du produit recoit une ligne de stock).
+  const allProducts = canAdjust
+    ? await prisma.product.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true, reference: true } })
+    : [];
 
   const visibleStores = stores
     .map((store) => ({
@@ -63,7 +70,7 @@ export default async function StockPage({
                   <th className="py-1">Reserve</th>
                   <th className="py-1">Seuil</th>
                   <th className="py-1">Statut</th>
-                  {can(role, "stock.adjust") && <th className="py-1">Ajuster</th>}
+                  {canAdjust && <th className="py-1">Ajuster</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -89,7 +96,7 @@ export default async function StockPage({
                           <span className="rounded-full bg-brand-green-100 px-2 py-0.5 text-xs font-semibold text-brand-green-700">OK</span>
                         )}
                       </td>
-                      {can(role, "stock.adjust") && (
+                      {canAdjust && (
                         <td className="py-2">
                           <form action={adjustStock} className="flex items-center gap-1">
                             <input type="hidden" name="productId" value={s.productId} />
@@ -98,6 +105,7 @@ export default async function StockPage({
                               type="number"
                               name="newQuantity"
                               min={0}
+                              required
                               defaultValue={s.quantity}
                               className="w-16 rounded-md border border-gray-300 px-2 py-1 text-xs"
                             />
@@ -119,12 +127,40 @@ export default async function StockPage({
                 })}
                 {store.stocks.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="py-4 text-center text-gray-400">Aucun stock enregistre pour ce depot.</td>
+                    <td colSpan={canAdjust ? 6 : 5} className="py-4 text-center text-gray-400">Aucun stock enregistre pour ce depot.</td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
+
+          {canAdjust && !showCriticalOnly && (() => {
+            const stocked = new Set(store.stocks.map((s) => s.productId));
+            const missing = allProducts.filter((p) => !stocked.has(p.id));
+            if (missing.length === 0) return null;
+            return (
+              <form action={adjustStock} className="mt-4 flex flex-wrap items-end gap-2 border-t border-gray-100 pt-4">
+                <input type="hidden" name="storeId" value={store.id} />
+                <div>
+                  <label className="text-xs font-medium text-brand-green-900">Ajouter un produit a ce depot</label>
+                  <select name="productId" required className="mt-1 block w-60 rounded-md border border-gray-300 px-2 py-1 text-xs">
+                    <option value="">— Choisir un produit —</option>
+                    {missing.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name} ({p.reference})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-brand-green-900">Quantite</label>
+                  <input type="number" name="newQuantity" min={0} required defaultValue={0} className="mt-1 block w-20 rounded-md border border-gray-300 px-2 py-1 text-xs" />
+                </div>
+                <input type="hidden" name="reason" value="Mise en stock initiale dans ce depot" />
+                <button type="submit" className="rounded-md bg-brand-green-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-green-800">
+                  Ajouter
+                </button>
+              </form>
+            );
+          })()}
         </div>
       ))}
 

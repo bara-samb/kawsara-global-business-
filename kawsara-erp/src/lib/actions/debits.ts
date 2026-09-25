@@ -6,8 +6,9 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { generateReference } from "@/lib/reference";
 import { requirePermission } from "@/lib/require-permission";
-import { parsePaymentOption } from "@/lib/payment-options";
+import { resolvePaymentOption } from "@/lib/payment-options";
 import { checkLowStockAndNotify } from "@/lib/notify";
+import { sumQuantitiesByProduct } from "@/lib/line-items";
 
 const itemSchema = z.object({
   productId: z.string().min(1),
@@ -35,14 +36,14 @@ export async function createDebit(formData: FormData) {
   });
 
   const debit = await prisma.$transaction(async (tx) => {
-    for (const item of data.items) {
+    for (const [productId, quantity] of sumQuantitiesByProduct(data.items)) {
       const stock = await tx.stock.findUnique({
-        where: { productId_storeId: { productId: item.productId, storeId: data.storeId } },
+        where: { productId_storeId: { productId, storeId: data.storeId } },
       });
       const available = (stock?.quantity ?? 0) - (stock?.reserved ?? 0);
-      if (available < item.quantity) {
-        const product = await tx.product.findUnique({ where: { id: item.productId } });
-        throw new Error(`Stock insuffisant pour "${product?.name ?? item.productId}" (disponible : ${available}).`);
+      if (available < quantity) {
+        const product = await tx.product.findUnique({ where: { id: productId } });
+        throw new Error(`Stock insuffisant pour "${product?.name ?? productId}" (disponible : ${available}).`);
       }
     }
 
@@ -103,6 +104,9 @@ export async function transformDebitToInvoice(debitId: string, formData: FormDat
     paymentOption: formData.get("paymentOption") || undefined,
     amountPaid: formData.get("amountPaid") || 0,
   });
+  if (data.amountPaid > 0 && !data.paymentOption) {
+    throw new Error("Choisissez le mode de paiement de l'acompte.");
+  }
 
   const invoiceId = await prisma.$transaction(async (tx) => {
     const debit = await tx.debit.findUnique({ where: { id: debitId }, include: { items: true } });
@@ -112,14 +116,14 @@ export async function transformDebitToInvoice(debitId: string, formData: FormDat
 
     // Nouvelle verification du stock au moment de la transformation (section 18) : le stock
     // physique peut avoir change depuis la reservation (correction d'inventaire, par exemple).
-    for (const item of debit.items) {
+    for (const [productId, quantity] of sumQuantitiesByProduct(debit.items)) {
       const stock = await tx.stock.findUnique({
-        where: { productId_storeId: { productId: item.productId, storeId: debit.storeId } },
+        where: { productId_storeId: { productId, storeId: debit.storeId } },
       });
-      if (!stock || stock.quantity < item.quantity) {
-        const product = await tx.product.findUnique({ where: { id: item.productId } });
+      if (!stock || stock.quantity < quantity) {
+        const product = await tx.product.findUnique({ where: { id: productId } });
         throw new Error(
-          `Stock insuffisant pour "${product?.name ?? item.productId}" (disponible : ${stock?.quantity ?? 0}).`
+          `Stock insuffisant pour "${product?.name ?? productId}" (disponible : ${stock?.quantity ?? 0}).`
         );
       }
     }
@@ -177,7 +181,7 @@ export async function transformDebitToInvoice(debitId: string, formData: FormDat
     }
 
     if (paidAmount > 0 && data.paymentOption) {
-      const { method, cashSessionId } = parsePaymentOption(data.paymentOption);
+      const { method, cashSessionId } = await resolvePaymentOption(tx, data.paymentOption);
       const paymentReference = await generateReference("payment", tx);
       await tx.payment.create({
         data: {

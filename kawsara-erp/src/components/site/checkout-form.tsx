@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { MapPin, Phone, Wallet, StickyNote, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
-import { useCartStore, cartTotal } from "@/lib/cart-store";
+import { useCartStore, useCartHydrated, cartTotal } from "@/lib/cart-store";
 import { createEcommerceOrder } from "@/lib/actions/ecommerce";
 
 const PAYMENT_METHODS = [
@@ -26,6 +26,7 @@ export function CheckoutForm({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const hydrated = useCartHydrated();
 
   function handleSubmit(formData: FormData) {
     setError(null);
@@ -53,6 +54,10 @@ export function CheckoutForm({
         setError(e instanceof Error ? e.message : "Une erreur est survenue.");
       }
     });
+  }
+
+  if (!hydrated) {
+    return <p className="text-sm text-gray-400">Chargement du panier...</p>;
   }
 
   if (items.length === 0) {

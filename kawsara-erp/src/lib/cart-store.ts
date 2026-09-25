@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useSyncExternalStore } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -55,9 +56,27 @@ export const useCartStore = create<CartState>()(
         set((state) => ({ items: state.items.filter((i) => i.productId !== productId) })),
       clear: () => set({ items: [] }),
     }),
-    { name: "kawsara-cart" }
+    // Le panier vit dans localStorage : on ne le relit qu'apres le montage (voir useCartHydration),
+    // sinon le premier rendu client differe du rendu serveur (erreur d'hydratation React).
+    { name: "kawsara-cart", skipHydration: true }
   )
 );
+
+/** A monter une fois (layout racine) : recharge le panier depuis localStorage cote client. */
+export function useCartHydration() {
+  useEffect(() => {
+    void useCartStore.persist.rehydrate();
+  }, []);
+}
+
+/** true une fois le panier recharge depuis localStorage (toujours false cote serveur). */
+export function useCartHydrated() {
+  return useSyncExternalStore(
+    (onChange) => useCartStore.persist.onFinishHydration(onChange),
+    () => useCartStore.persist.hasHydrated(),
+    () => false
+  );
+}
 
 export function cartTotal(items: CartItem[]) {
   return items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
