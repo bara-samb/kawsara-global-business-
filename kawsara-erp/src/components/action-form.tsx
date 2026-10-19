@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useRef, useState, useTransition, type FormEvent, type ReactNode } from "react";
+import { unstable_rethrow } from "next/navigation";
 import type { ActionResult } from "@/lib/errors";
 
 export type ConfirmOptions = {
@@ -43,7 +44,10 @@ export function ActionForm({
           setError(null);
           form.reset();
         }
-      } catch {
+      } catch (error) {
+        // redirect() dans la Server Action arrive ici sous forme d'erreur : on la laisse a Next
+        // pour qu'il navigue, ce n'est pas un echec (le produit, la vente... est bien enregistre).
+        unstable_rethrow(error);
         setError("Impossible de joindre le serveur. Verifiez votre connexion et reessayez.");
       }
     });
