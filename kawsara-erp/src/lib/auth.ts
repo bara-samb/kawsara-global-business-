@@ -1,25 +1,14 @@
 import NextAuth from "next-auth";
-import { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { notifyRoles } from "@/lib/notify";
-import { matchTotpCounter } from "@/lib/totp";
-import { decryptSecret } from "@/lib/secret-box";
 import { hitRateLimit, isRateLimited, resetRateLimit, currentRequestIp } from "@/lib/rate-limit";
 import type { Role } from "@prisma/client";
 
 const MAX_FAILURES_PER_IP = 5;
 const FAILURE_WINDOW_MS = 15 * 60 * 1000;
 const ACCOUNT_LOCK_THRESHOLD = 20;
-
-class TwoFactorRequiredError extends CredentialsSignin {
-  code = "2fa_required";
-}
-
-class TwoFactorInvalidError extends CredentialsSignin {
-  code = "2fa_invalid";
-}
 
 declare module "next-auth" {
   interface User {
@@ -61,12 +50,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Mot de passe", type: "password" },
-        code: { label: "Code 2FA", type: "text" },
       },
       async authorize(credentials) {
         const email = typeof credentials?.email === "string" ? credentials.email.toLowerCase() : null;
         const password = credentials?.password;
-        const code = typeof credentials?.code === "string" ? credentials.code.trim() : "";
         if (!email || typeof password !== "string") return null;
 
         // Limite par couple email + IP : un attaquant qui se trompe de mot de passe bloque
@@ -127,28 +114,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return null;
         }
 
-        let twoFactorCounter: number | null = null;
-        if (user.twoFactorEnabled && user.twoFactorSecret) {
-          if (!code) {
-            throw new TwoFactorRequiredError();
-          }
-          twoFactorCounter = matchTotpCounter(decryptSecret(user.twoFactorSecret), code, user.twoFactorLastCounter);
-          if (twoFactorCounter === null) {
-            recordFailure();
-            await prisma.securityEvent.create({
-              data: { type: "LOGIN_FAILED", email, userId: user.id, ipAddress, detail: "Code 2FA invalide ou deja utilise" },
-            });
-            throw new TwoFactorInvalidError();
-          }
-        }
-
         resetRateLimit(attemptKey);
         await prisma.user.update({
           where: { id: user.id },
           data: {
             failedLogins: 0,
             lockedUntil: null,
-            ...(twoFactorCounter !== null && { twoFactorLastCounter: twoFactorCounter }),
           },
         });
         await prisma.auditLog.create({
