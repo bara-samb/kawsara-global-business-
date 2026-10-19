@@ -11,6 +11,7 @@ import { randomUUID } from "node:crypto";
 import { put, del } from "@vercel/blob";
 import { UserError, type ActionResult } from "@/lib/errors";
 import { runAction } from "@/lib/run-action";
+import { generateReference } from "@/lib/reference";
 
 const baseProductSchema = z.object({
   name: z.string().trim().min(2, "Le nom est obligatoire"),
@@ -25,7 +26,6 @@ const baseProductSchema = z.object({
 });
 
 const createProductSchema = baseProductSchema.extend({
-  reference: z.string().trim().min(1, "La reference est obligatoire").max(50, "La reference est trop longue"),
   storeId: z.string().min(1, "Boutique obligatoire"),
   initialStock: z.coerce.number().int().min(0).default(0),
 });
@@ -46,7 +46,6 @@ function parseBaseForm(formData: FormData) {
 
 function parseCreateForm(formData: FormData) {
   return createProductSchema.parse({
-    reference: formData.get("reference"),
     name: formData.get("name"),
     description: formData.get("description") || undefined,
     categoryId: formData.get("categoryId") || undefined,
@@ -113,17 +112,19 @@ export async function createProduct(formData: FormData): Promise<ActionResult> {
     const data = parseCreateForm(formData);
     assertStoreAccess(user, data.storeId);
     const image = await saveProductImage(formData.get("image"));
-    const existingProduct = await prisma.product.findUnique({ where: { reference: data.reference } });
-    if (existingProduct) {
-      throw new UserError("Cette reference produit existe deja.");
-    }
 
     let product;
     try {
       product = await prisma.$transaction(async (tx) => {
+        // Reference generee automatiquement (PRD-ANNEE-000001). Le compteur saute les references
+        // deja prises (produits saisis a la main avant la generation automatique).
+        let reference = await generateReference("product", tx);
+        while (await tx.product.findUnique({ where: { reference }, select: { id: true } })) {
+          reference = await generateReference("product", tx);
+        }
         const created = await tx.product.create({
           data: {
-            reference: data.reference,
+            reference,
             name: data.name,
             description: data.description,
             categoryId: data.categoryId || null,
@@ -146,7 +147,7 @@ export async function createProduct(formData: FormData): Promise<ActionResult> {
               storeId: data.storeId,
               type: "ENTREE",
               quantity: data.initialStock,
-              reference: data.reference,
+              reference: created.reference,
               reason: "Stock initial a la creation du produit",
               userId: user.id,
             },

@@ -12,7 +12,7 @@ export default async function ProduitDetailPage({
 }) {
   const user = await requirePagePermission("product.read");
   const canUpdate = can(user.role, "product.update");
-  const canDelete = can(user.role, "product.delete", user.isPrincipalAdmin);
+  const canDelete = can(user.role, "product.delete");
   const { id } = await params;
 
   const [product, categories, suppliers] = await Promise.all([

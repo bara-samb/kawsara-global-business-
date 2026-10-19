@@ -38,11 +38,19 @@ describe("RBAC (cahier des charges section 6)", () => {
   });
 
   it("reserve les actions dangereuses a l'admin principal uniquement", () => {
-    for (const permission of ["category.delete", "debit.cancel", "ecommerceOrder.cancel", "stock.adjust", "user.create", "user.update"]) {
+    for (const permission of ["debit.cancel", "ecommerceOrder.cancel", "stock.adjust", "user.create", "user.update"]) {
       expect(can("ADMIN", permission, true)).toBe(true);
       expect(can("ADMIN", permission)).toBe(false);
       expect(can("GERANT", permission)).toBe(false);
       expect(can("CAISSIER", permission, true)).toBe(false); // le drapeau seul ne suffit pas sans le role ADMIN
+    }
+  });
+
+  it("reserve la suppression des produits et categories aux ADMIN", () => {
+    for (const permission of ["category.delete", "product.delete"]) {
+      expect(can("ADMIN", permission)).toBe(true);
+      expect(can("GERANT", permission)).toBe(false);
+      expect(can("CAISSIER", permission)).toBe(false);
     }
   });
 

@@ -9,7 +9,7 @@ export default async function CategoriesPage() {
   await requirePagePermission("category.read");
   const session = await auth();
   const role = session!.user.role;
-  const isPrincipalAdmin = session!.user.isPrincipalAdmin;
+  const canDelete = can(role, "category.delete");
 
   const categories = await prisma.category.findMany({
     orderBy: { name: "asc" },
@@ -48,7 +48,7 @@ export default async function CategoriesPage() {
               <th className="px-4 py-3">Nom</th>
               <th className="px-4 py-3">Categorie parente</th>
               <th className="px-4 py-3">Produits</th>
-              {can(role, "category.delete", isPrincipalAdmin) && <th className="px-4 py-3" />}
+              {canDelete && <th className="px-4 py-3" />}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -59,7 +59,7 @@ export default async function CategoriesPage() {
                   <td className="px-4 py-3 font-medium text-brand-green-900">{c.name}</td>
                   <td className="px-4 py-3 text-gray-600">{c.parent?.name ?? "-"}</td>
                   <td className="px-4 py-3">{c._count.products}</td>
-                  {can(role, "category.delete", isPrincipalAdmin) && (
+                  {canDelete && (
                     <td className="px-4 py-3 text-right">
                       <ActionForm
                         action={del}
@@ -78,7 +78,7 @@ export default async function CategoriesPage() {
             })}
             {categories.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-gray-400">Aucune categorie.</td>
+                <td colSpan={canDelete ? 4 : 3} className="px-4 py-8 text-center text-gray-400">Aucune categorie.</td>
               </tr>
             )}
           </tbody>

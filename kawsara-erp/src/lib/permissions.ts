@@ -100,8 +100,6 @@ export const PERMISSIONS: Record<Role, string[]> = {
  * Meme un autre ADMIN ou un GERANT ("*" / "resource.*") ne peut pas les executer.
  */
 export const PRINCIPAL_ADMIN_ONLY = new Set<string>([
-  "category.delete",
-  "product.delete",
   "debit.cancel",
   "invoice.cancel",
   "ecommerceOrder.cancel",
@@ -112,6 +110,12 @@ export const PRINCIPAL_ADMIN_ONLY = new Set<string>([
   "user.delete",
 ]);
 
+/**
+ * Suppressions reservees au role ADMIN (tout admin, principal ou non) : un GERANT, malgre
+ * "product.*" / "category.*", ne peut pas les executer.
+ */
+export const ADMIN_ONLY = new Set<string>(["category.delete", "product.delete"]);
+
 export function isPrincipalAdminOnly(permission: string): boolean {
   return PRINCIPAL_ADMIN_ONLY.has(permission);
 }
@@ -120,6 +124,7 @@ export function can(role: Role, permission: string, isPrincipalAdmin = false): b
   if (isPrincipalAdminOnly(permission)) {
     return role === "ADMIN" && isPrincipalAdmin;
   }
+  if (ADMIN_ONLY.has(permission)) return role === "ADMIN";
   const perms = PERMISSIONS[role] ?? [];
   if (perms.includes("*")) return true;
   if (perms.includes(permission)) return true;

@@ -17,17 +17,9 @@ export default async function NouveauProduitPage() {
       <h1 className="text-xl font-bold text-brand-green-900">Nouveau produit</h1>
 
       <ActionForm action={createProduct} className="mt-6 space-y-4 rounded-xl border border-gray-200 bg-white p-6">
-        <div>
-          <label className="text-sm font-medium text-brand-green-900">Référence du produit <span className="text-red-600">*</span></label>
-          <input
-            name="reference"
-            required
-            maxLength={50}
-            placeholder="Ex. PRD-000001"
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-          />
-          <p className="mt-1 text-xs text-gray-500">Cette référence doit être unique et apparaîtra sur les factures.</p>
-        </div>
+        <p className="rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-500">
+          La référence du produit (PRD-ANNEE-000001) est attribuée automatiquement à l&apos;enregistrement.
+        </p>
 
         <div>
           <label className="text-sm font-medium text-brand-green-900">Nom du produit <span className="text-red-600">*</span></label>

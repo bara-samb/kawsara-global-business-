@@ -44,10 +44,10 @@ describe("requirePermission : refus cote serveur + audit (criteres 6 et 58.11)",
   it("refuse une action dangereuse a un ADMIN qui n'est pas l'admin principal", async () => {
     await prisma.user.update({ where: { id: userId }, data: { role: "ADMIN" } });
     testSession!.user.role = "ADMIN";
-    await expect(requirePermission("category.delete")).rejects.toThrow(/acces refuse/i);
+    await expect(requirePermission("invoice.cancel")).rejects.toThrow(/acces refuse/i);
 
     const log = await prisma.auditLog.findFirst({
-      where: { userId, action: "ACCESS_DENIED", entity: "category.delete" },
+      where: { userId, action: "ACCESS_DENIED", entity: "invoice.cancel" },
     });
     expect(log).not.toBeNull();
   });
