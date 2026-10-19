@@ -73,8 +73,9 @@ type SavedImage = { url: string; remove: () => Promise<void> };
 
 async function saveProductImage(fileValue: FormDataEntryValue | null): Promise<SavedImage | null> {
   if (!(fileValue instanceof File) || fileValue.size === 0) return null;
-  if (fileValue.size > 5 * 1024 * 1024) {
-    throw new UserError("L'image ne doit pas depasser 5 Mo.");
+  // Aligne sur serverActions.bodySizeLimit (next.config.ts), un peu de marge pour les autres champs.
+  if (fileValue.size > 3.5 * 1024 * 1024) {
+    throw new UserError("L'image ne doit pas depasser 3,5 Mo.");
   }
 
   const extensions: Record<string, string> = {

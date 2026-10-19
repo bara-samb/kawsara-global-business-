@@ -29,6 +29,13 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Image de production autonome pour Docker (voir Dockerfile / docs/DEPLOIEMENT.md).
   output: "standalone",
+  experimental: {
+    serverActions: {
+      // 1 Mo par defaut : trop peu pour une photo produit. Les photos sont deja compressees dans
+      // le navigateur (product-image-input.tsx) ; 4 Mo reste sous la limite de 4,5 Mo de Vercel.
+      bodySizeLimit: "4mb",
+    },
+  },
   turbopack: {
     root: path.resolve(__dirname),
   },
