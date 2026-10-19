@@ -4,8 +4,13 @@ import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/lib/require-permission";
 
-export default async function ProduitsPage() {
+export default async function ProduitsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cree?: string; supprime?: string }>;
+}) {
   await requirePagePermission("product.read");
+  const { cree, supprime } = await searchParams;
   const session = await auth();
   const role = session!.user.role;
   // Le prix d'achat revele la marge : reserve a ceux qui gerent les produits ou voient les benefices.
@@ -35,6 +40,17 @@ export default async function ProduitsPage() {
           </Link>
         )}
       </div>
+
+      {cree && (
+        <p className="mt-4 rounded-md bg-brand-green-50 px-3 py-2 text-sm text-brand-green-700">
+          Le produit « {cree} » a bien ete enregistre.
+        </p>
+      )}
+      {supprime && (
+        <p className="mt-4 rounded-md bg-brand-green-50 px-3 py-2 text-sm text-brand-green-700">
+          Le produit « {supprime} » a ete definitivement supprime.
+        </p>
+      )}
 
       <div className="mt-6 overflow-x-auto rounded-xl border border-gray-200 bg-white">
         <table className="min-w-full divide-y divide-gray-200 text-sm text-brand-green-900">

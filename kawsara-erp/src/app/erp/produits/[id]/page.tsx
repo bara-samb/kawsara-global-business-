@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { updateProduct, toggleProductActive } from "@/lib/actions/products";
+import { updateProduct, toggleProductActive, deleteProduct } from "@/lib/actions/products";
 import { ActionForm } from "@/components/action-form";
 import { requirePagePermission } from "@/lib/require-permission";
 import { can } from "@/lib/permissions";
@@ -12,6 +12,7 @@ export default async function ProduitDetailPage({
 }) {
   const user = await requirePagePermission("product.read");
   const canUpdate = can(user.role, "product.update");
+  const canDelete = can(user.role, "product.delete", user.isPrincipalAdmin);
   const { id } = await params;
 
   const [product, categories, suppliers] = await Promise.all([
@@ -28,6 +29,7 @@ export default async function ProduitDetailPage({
   const boundUpdate = updateProduct.bind(null, product.id);
   const activate = toggleProductActive.bind(null, product.id, true);
   const deactivate = toggleProductActive.bind(null, product.id, false);
+  const remove = deleteProduct.bind(null, product.id);
 
   return (
     <div className="max-w-2xl">
@@ -36,31 +38,50 @@ export default async function ProduitDetailPage({
           <h1 className="text-xl font-bold text-brand-green-900">{product.name}</h1>
           <p className="font-mono text-xs text-gray-500">{product.reference}</p>
         </div>
-        {canUpdate && (
-          <ActionForm
-            action={product.active ? deactivate : activate}
-            confirm={
-              product.active
-                ? {
-                    title: "Desactiver ce produit ?",
-                    message: `« ${product.name} » ne pourra plus etre vendu ni affiche dans la boutique en ligne.`,
-                    confirmLabel: "Oui, desactiver",
-                  }
-                : undefined
-            }
-          >
-            <button
-              type="submit"
-              className={
+        <div className="flex gap-2">
+          {canUpdate && (
+            <ActionForm
+              action={product.active ? deactivate : activate}
+              confirm={
                 product.active
-                  ? "rounded-md border border-red-300 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
-                  : "rounded-md border border-brand-green-300 px-3 py-1.5 text-sm font-semibold text-brand-green-700 hover:bg-brand-green-50"
+                  ? {
+                      title: "Desactiver ce produit ?",
+                      message: `« ${product.name} » ne pourra plus etre vendu ni affiche dans la boutique en ligne.`,
+                      confirmLabel: "Oui, desactiver",
+                    }
+                  : undefined
               }
             >
-              {product.active ? "Desactiver" : "Activer"}
-            </button>
-          </ActionForm>
-        )}
+              <button
+                type="submit"
+                className={
+                  product.active
+                    ? "rounded-md border border-red-300 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
+                    : "rounded-md border border-brand-green-300 px-3 py-1.5 text-sm font-semibold text-brand-green-700 hover:bg-brand-green-50"
+                }
+              >
+                {product.active ? "Desactiver" : "Activer"}
+              </button>
+            </ActionForm>
+          )}
+          {canDelete && (
+            <ActionForm
+              action={remove}
+              confirm={{
+                title: "Supprimer definitivement ce produit ?",
+                message: `« ${product.name} » (${product.reference}) sera supprime avec son stock, son historique de mouvements et ses images. Cette action est irreversible.`,
+                confirmLabel: "Oui, supprimer",
+              }}
+            >
+              <button
+                type="submit"
+                className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700"
+              >
+                Supprimer
+              </button>
+            </ActionForm>
+          )}
+        </div>
       </div>
 
       <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4">

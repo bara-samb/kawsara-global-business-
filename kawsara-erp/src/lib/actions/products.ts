@@ -164,7 +164,7 @@ export async function createProduct(formData: FormData): Promise<ActionResult> {
       if (image) await image.remove().catch(() => undefined);
       throw error;
     }
-    redirect(`/erp/produits/${product.id}`);
+    redirect(`/erp/produits?cree=${encodeURIComponent(product.name)}`);
   });
 }
 
@@ -210,5 +210,73 @@ export async function toggleProductActive(productId: string, active: boolean): P
       },
     });
     revalidatePath("/erp/produits");
+  });
+}
+
+// Supprime le fichier d'une image produit (Vercel Blob ou public/uploads/products).
+async function removeProductImageFile(url: string): Promise<void> {
+  if (url.startsWith("https://")) {
+    if (isBlobStorageConfigured()) await del(url);
+    return;
+  }
+  if (url.startsWith("/uploads/products/")) {
+    await unlink(path.join(process.cwd(), "public", url));
+  }
+}
+
+/**
+ * Suppression definitive d'un produit. Refusee s'il apparait dans des ventes, factures, debits,
+ * commandes (fournisseurs ou en ligne) : ces documents doivent rester intacts. Dans ce cas,
+ * le produit se desactive.
+ */
+export async function deleteProduct(productId: string): Promise<ActionResult> {
+  return runAction(async () => {
+    const user = await requirePermission("product.delete");
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      include: {
+        images: true,
+        _count: {
+          select: {
+            saleItems: true,
+            debitItems: true,
+            invoiceItems: true,
+            supplierOrderItems: true,
+            supplierReceiptItems: true,
+            ecommerceOrderItems: true,
+          },
+        },
+      },
+    });
+    if (!product) {
+      throw new UserError("Ce produit est introuvable. Il a peut-etre deja ete supprime.");
+    }
+    const usages = Object.values(product._count).reduce((sum, count) => sum + count, 0);
+    if (usages > 0) {
+      throw new UserError(
+        "Impossible de supprimer : ce produit apparait dans des ventes, factures, debits ou commandes. Desactivez-le plutot."
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.stockMovement.deleteMany({ where: { productId } });
+      await tx.stock.deleteMany({ where: { productId } });
+      await tx.product.delete({ where: { id: productId } });
+      await tx.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "DELETE",
+          entity: "Product",
+          entityId: productId,
+          metadata: JSON.stringify({ reference: product.reference, name: product.name }),
+        },
+      });
+    });
+    // Le produit est supprime : un fichier image orphelin ne doit pas faire echouer l'action.
+    await Promise.all(product.images.map((image) => removeProductImageFile(image.url).catch(() => undefined)));
+
+    revalidatePath("/erp/produits");
+    revalidatePath("/catalogue");
+    redirect(`/erp/produits?supprime=${encodeURIComponent(product.name)}`);
   });
 }
