@@ -6,6 +6,7 @@ import { can } from "@/lib/permissions";
 import { NotificationsBell } from "@/components/erp/notifications-bell";
 import { SidebarNav } from "@/components/erp/sidebar-nav";
 import { MobileSidebar } from "@/components/erp/mobile-sidebar";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { ERP_NAV } from "./nav";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -73,7 +74,8 @@ export default async function ErpLayout({ children }: { children: React.ReactNod
               <span className="font-bold text-brand-green-900">Kawsara ERP</span>
             </div>
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-1">
+            <ThemeToggle />
             <NotificationsBell />
           </div>
         </header>

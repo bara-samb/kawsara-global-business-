@@ -4,6 +4,7 @@ import { Home, Store, Info, Phone, LayoutDashboard } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { CartBadge } from "@/components/site/cart-badge";
 import { MobileMenu, type SiteNavItem } from "@/components/site/mobile-menu";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const NAV: SiteNavItem[] = [
   { href: "/", label: "Accueil", iconKey: "home" },
@@ -37,7 +38,7 @@ export async function SiteHeader() {
               className="h-10 w-auto shrink-0 sm:h-12"
               priority
             />
-            <span className="flex flex-col leading-tight">
+            <span className="hidden flex-col leading-tight min-[360px]:flex">
               <span className="text-base font-extrabold tracking-wide text-brand-green-800 sm:text-lg">
                 KAWSARA
               </span>
@@ -64,7 +65,8 @@ export async function SiteHeader() {
           })}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <ThemeToggle />
           <CartBadge />
           {isStaff && (
             <Link
