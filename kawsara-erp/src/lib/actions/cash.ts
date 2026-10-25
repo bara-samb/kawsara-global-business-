@@ -59,16 +59,18 @@ export async function closeCashSession(sessionId: string, formData: FormData): P
 
     const session = await prisma.cashSession.findUnique({
       where: { id: sessionId },
-      include: { payments: true, debtPayments: true, movements: true, cashRegister: true },
+      include: { payments: true, movements: true, cashRegister: true },
     });
     if (!session || session.status !== "OUVERTE") {
       throw new UserError("Session de caisse introuvable ou deja fermee.");
     }
     assertStoreAccess(user, session.cashRegister.storeId);
 
+    // Un reglement de dette cree a la fois un DebtPayment et le Payment miroir sur la facture
+    // (voir settleDebt), tous deux rattaches a la session : seuls les Payment sont comptes,
+    // sinon chaque dette encaissee en especes etait comptee deux fois dans le theorique.
     const cashIn =
       session.payments.reduce((s, p) => s + p.amount, 0) +
-      session.debtPayments.reduce((s, p) => s + p.amount, 0) +
       session.movements.filter((m) => m.type === "ENTREE").reduce((s, m) => s + m.amount, 0);
     const cashOut = session.movements.filter((m) => m.type === "SORTIE").reduce((s, m) => s + m.amount, 0);
     const theoretical = session.openingBalance + cashIn - cashOut;

@@ -16,7 +16,7 @@ import { generateReference } from "@/lib/reference";
 const baseProductSchema = z.object({
   name: z.string().trim().min(2, "Le nom est obligatoire"),
   description: z.string().optional(),
-  categoryId: z.string().trim().min(1, "La categorie est obligatoire"),
+  categoryId: z.string({ error: "La categorie est obligatoire" }).trim().min(1, "La categorie est obligatoire"),
   supplierId: z.string().optional(),
   purchasePrice: z.coerce.number().int().positive("Le prix d'achat est obligatoire"),
   sellingPrice: z.coerce.number().int().positive("Le prix de vente est obligatoire"),

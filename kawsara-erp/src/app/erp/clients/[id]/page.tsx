@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { startOfDay, startOfMonth, startOfWeek } from "@/lib/dates";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { updateCustomer } from "@/lib/actions/customers";
@@ -26,20 +27,9 @@ const INVOICE_LABELS: Record<string, string> = {
 const PERIOD_LABELS: Record<string, string> = { jour: "Aujourd'hui", semaine: "Cette semaine", mois: "Ce mois-ci" };
 
 function periodStart(period: string): Date {
-  const now = new Date();
-  if (period === "semaine") {
-    const day = now.getDay() === 0 ? 7 : now.getDay();
-    const start = new Date(now);
-    start.setDate(now.getDate() - (day - 1));
-    start.setHours(0, 0, 0, 0);
-    return start;
-  }
-  if (period === "mois") {
-    return new Date(now.getFullYear(), now.getMonth(), 1);
-  }
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0);
-  return start;
+  if (period === "semaine") return startOfWeek();
+  if (period === "mois") return startOfMonth();
+  return startOfDay();
 }
 
 export default async function ClientDetailPage({

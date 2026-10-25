@@ -41,7 +41,7 @@ export default async function NouvelleVentePage({
   });
 
   return (
-    <div className="max-w-5xl">
+    <div className="max-w-4xl">
       <h1 className="text-xl font-bold text-brand-green-900">Nouvelle vente</h1>
       <ActionForm action={createSale} className="mt-6 space-y-4 rounded-xl border border-gray-200 bg-white p-6">
         <div className="grid gap-4 sm:grid-cols-2">

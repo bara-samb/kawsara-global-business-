@@ -91,11 +91,11 @@ export function LineItemsEditor({
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 text-left text-xs font-semibold uppercase text-gray-500">
             <tr>
-              <th className="px-3 py-2.5">Produit</th>
-              <th className="px-3 py-2.5">Qté</th>
-              <th className="px-3 py-2.5">{priceLabel}</th>
-              <th className="px-3 py-2.5 text-right">Total</th>
-              <th className="px-3 py-2.5" />
+              <th className="px-2 py-2">Produit</th>
+              <th className="px-2 py-2">Qté</th>
+              <th className="px-2 py-2">{priceLabel}</th>
+              <th className="px-2 py-2 text-right">Total</th>
+              <th className="px-2 py-2" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -106,7 +106,7 @@ export function LineItemsEditor({
                 product?.availableStock !== undefined && row.quantity > product.availableStock;
               return (
                 <tr key={row.key} className="align-top">
-                  <td className="px-3 py-2.5">
+                  <td className="px-2 py-1.5">
                     <SuggestInput
                       value={row.productQuery}
                       onChange={(value) => onProductTyped(row.key, value)}
@@ -115,7 +115,7 @@ export function LineItemsEditor({
                       ariaLabel="Produit"
                       placeholder="Tapez le nom ou la réf. du produit..."
                       emptyText="Aucun produit trouvé"
-                      className={`w-full min-w-[260px] rounded-md border px-3 py-2.5 text-sm ${
+                      className={`w-full min-w-[200px] rounded-md border px-2 py-1.5 text-sm ${
                         typedWithoutChoice ? "border-brand-gold-500" : "border-gray-300"
                       }`}
                     />
@@ -129,30 +129,30 @@ export function LineItemsEditor({
                       <p className="mt-1 text-xs text-brand-gold-700">Choisissez un produit dans la liste.</p>
                     )}
                   </td>
-                  <td className="px-3 py-2.5">
+                  <td className="px-2 py-1.5">
                     <input
                       type="number"
                       min={1}
                       value={row.quantity}
                       aria-label="Quantité"
                       onChange={(e) => updateRow(row.key, { quantity: Number(e.target.value) })}
-                      className="w-24 rounded-md border border-gray-300 px-3 py-2.5 text-sm"
+                      className="w-16 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
                     />
                   </td>
-                  <td className="px-3 py-2.5">
+                  <td className="px-2 py-1.5">
                     <input
                       type="number"
                       min={0}
                       value={row.unitPrice}
                       aria-label={priceLabel}
                       onChange={(e) => updateRow(row.key, { unitPrice: Number(e.target.value) })}
-                      className="w-36 rounded-md border border-gray-300 px-3 py-2.5 text-sm"
+                      className="w-24 rounded-md border border-gray-300 px-2 py-1.5 text-sm"
                     />
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2.5 pt-5 text-right font-medium text-brand-green-900">
+                  <td className="whitespace-nowrap px-2 py-1.5 pt-3 text-right font-medium text-brand-green-900">
                     {(row.quantity * row.unitPrice).toLocaleString("fr-FR")}
                   </td>
-                  <td className="px-3 py-2.5 pt-5">
+                  <td className="px-2 py-1.5 pt-3">
                     <button
                       type="button"
                       onClick={() => removeRow(row.key)}

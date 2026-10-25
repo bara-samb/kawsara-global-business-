@@ -23,6 +23,7 @@ import {
 import { RevenueChart } from "@/components/erp/revenue-chart";
 import { PrintButton } from "@/components/erp/print-button";
 import { requirePagePermission } from "@/lib/require-permission";
+import { addDays, dayKey, monthLabel, startOfDay, startOfMonth, startOfWeek } from "@/lib/dates";
 
 function ExportLink({ href, label }: { href: string; label: string }) {
   return (
@@ -40,9 +41,7 @@ function fcfa(n: number) {
   return `${Math.round(n).toLocaleString("fr-FR")} FCFA`;
 }
 
-function toDateInput(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
+const toDateInput = dayKey;
 
 export default async function RapportsPage({
   searchParams,
@@ -66,6 +65,18 @@ export default async function RapportsPage({
   ]);
 
   const productsByProfit = [...summary.products].sort((a, b) => b.profit - a.profit);
+
+  const now = new Date();
+  const monthStart = startOfMonth(now);
+  const lastMonthStart = startOfMonth(addDays(monthStart, -1));
+  const periodShortcuts = [
+    { label: "Aujourd'hui", from: dayKey(startOfDay(now)), to: dayKey(now) },
+    { label: "Cette semaine", from: dayKey(startOfWeek(now)), to: dayKey(now) },
+    { label: "Ce mois", from: dayKey(monthStart), to: dayKey(now) },
+    { label: "Mois dernier", from: dayKey(lastMonthStart), to: dayKey(addDays(monthStart, -1)) },
+    { label: "Cette annee", from: `${now.getUTCFullYear()}-01-01`, to: dayKey(now) },
+  ];
+  const salesDays = summary.revenueByDay.filter((d) => d.revenue > 0).reverse();
 
   const exportQuery = `from=${toDateInput(range.from)}&to=${toDateInput(range.to)}${range.storeId ? `&storeId=${range.storeId}` : ""}`;
 
@@ -105,6 +116,21 @@ export default async function RapportsPage({
           Appliquer
         </button>
       </form>
+      <div className="mt-3 flex flex-wrap gap-2 text-xs print:hidden">
+        {periodShortcuts.map((p) => (
+          <Link
+            key={p.label}
+            href={`/erp/rapports?from=${p.from}&to=${p.to}${range.storeId && !forcedStoreId ? `&storeId=${range.storeId}` : ""}`}
+            className={`rounded-full border px-3 py-1 font-semibold transition ${
+              p.from === toDateInput(range.from) && p.to === toDateInput(range.to)
+                ? "border-brand-green-700 bg-brand-green-700 text-white"
+                : "border-gray-300 text-brand-green-700 hover:border-brand-green-700"
+            }`}
+          >
+            {p.label}
+          </Link>
+        ))}
+      </div>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="animate-fade-in-up rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
@@ -145,6 +171,59 @@ export default async function RapportsPage({
         </div>
         <div className="mt-3">
           <RevenueChart data={summary.revenueByDay} />
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <p className="text-sm font-semibold text-brand-green-900">Ventes par jour</p>
+          {salesDays.length === 0 ? (
+            <p className="mt-3 text-sm text-gray-500">Aucune vente sur la periode.</p>
+          ) : (
+            <div className="mt-3 max-h-80 overflow-y-auto">
+              <table className="min-w-full text-sm">
+                <thead className="text-left text-xs uppercase text-gray-500">
+                  <tr><th className="py-1">Jour</th><th className="py-1 text-right">CA</th></tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {salesDays.map((d) => (
+                    <tr key={d.date}>
+                      <td className="py-1.5">{new Date(`${d.date}T12:00:00Z`).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Dakar" })}</td>
+                      <td className="py-1.5 text-right font-medium">{fcfa(d.revenue)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <p className="text-sm font-semibold text-brand-green-900">Ventes par mois</p>
+          {summary.revenueByMonth.length === 0 ? (
+            <p className="mt-3 text-sm text-gray-500">Aucune vente sur la periode.</p>
+          ) : (
+            <table className="mt-3 min-w-full text-sm">
+              <thead className="text-left text-xs uppercase text-gray-500">
+                <tr><th className="py-1">Mois</th><th className="py-1 text-right">Factures</th><th className="py-1 text-right">CA</th></tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {summary.revenueByMonth.map((m) => (
+                  <tr key={m.month}>
+                    <td className="py-1.5 capitalize">{monthLabel(m.month)}</td>
+                    <td className="py-1.5 text-right">{m.invoices}</td>
+                    <td className="py-1.5 text-right font-medium">{fcfa(m.revenue)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-gray-200 font-bold text-brand-green-900">
+                  <td className="py-1.5">Total</td>
+                  <td className="py-1.5 text-right">{summary.invoiceCount}</td>
+                  <td className="py-1.5 text-right">{fcfa(summary.revenue)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          )}
         </div>
       </div>
 

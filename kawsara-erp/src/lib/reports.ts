@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { InvoiceStatus } from "@prisma/client";
+import { addDays, dayKey, endOfDay, monthKey, startOfDay } from "@/lib/dates";
 
 export type ReportRange = { from: Date; to: Date; storeId: string | null };
 
@@ -19,15 +20,11 @@ export function parseReportRange(
   forcedStoreId: string | null
 ): ReportRange {
   // Une date absente ou invalide dans l'URL retombe sur les 30 derniers jours.
-  const to = parseDateParam(params.to) ?? new Date();
-  to.setHours(23, 59, 59, 999);
+  // Journees completes, heure de Dakar (voir lib/dates.ts).
+  const to = endOfDay(parseDateParam(params.to) ?? new Date());
   const parsedFrom = parseDateParam(params.from);
-  const from = parsedFrom ?? new Date(to);
-  if (!parsedFrom) {
-    from.setDate(from.getDate() - 29);
-  }
-  from.setHours(0, 0, 0, 0);
-  if (from > to) from.setTime(new Date(to).setHours(0, 0, 0, 0));
+  let from = startOfDay(parsedFrom ?? addDays(to, -29));
+  if (from > to) from = startOfDay(to);
   return { from, to, storeId: forcedStoreId ?? params.storeId ?? null };
 }
 
@@ -49,6 +46,7 @@ export async function getFullAggregates(range: ReportRange) {
   let revenue = 0;
   let profit = 0;
   const byDay = new Map<string, number>();
+  const byMonth = new Map<string, { revenue: number; invoices: number }>();
   const byProduct = new Map<
     string,
     {
@@ -68,8 +66,18 @@ export async function getFullAggregates(range: ReportRange) {
 
   for (const invoice of invoices) {
     revenue += invoice.total;
-    const day = invoice.createdAt.toISOString().slice(0, 10);
+    const day = dayKey(invoice.createdAt);
     byDay.set(day, (byDay.get(day) ?? 0) + invoice.total);
+    const month = byMonth.get(monthKey(invoice.createdAt)) ?? { revenue: 0, invoices: 0 };
+    month.revenue += invoice.total;
+    month.invoices += 1;
+    byMonth.set(monthKey(invoice.createdAt), month);
+
+    // La remise globale de la facture (remise sur la vente) est repartie sur les lignes au
+    // prorata de leur montant : sans cela, la marge et le CA par produit etaient surestimes et
+    // la somme des produits ne retombait pas sur le CA.
+    const linesTotal = invoice.items.reduce((s, item) => s + item.total, 0);
+    const netRatio = linesTotal > 0 ? invoice.total / linesTotal : 1;
 
     const customerKey = invoice.customerId ?? "anonyme";
     const customerEntry = byCustomer.get(customerKey) ?? {
@@ -85,7 +93,8 @@ export async function getFullAggregates(range: ReportRange) {
 
     for (const item of invoice.items) {
       const itemCost = item.product.purchasePrice * item.quantity;
-      const itemProfit = item.unitPrice * item.quantity - item.discount - itemCost;
+      const itemRevenue = item.total * netRatio;
+      const itemProfit = itemRevenue - itemCost;
       profit += itemProfit;
       customerEntry.profit += itemProfit;
       const entry = byProduct.get(item.productId) ?? {
@@ -98,7 +107,7 @@ export async function getFullAggregates(range: ReportRange) {
         profit: 0,
       };
       entry.quantity += item.quantity;
-      entry.revenue += item.total;
+      entry.revenue += itemRevenue;
       entry.cost += itemCost;
       entry.profit += itemProfit;
       byProduct.set(item.productId, entry);
@@ -106,12 +115,12 @@ export async function getFullAggregates(range: ReportRange) {
   }
 
   const revenueByDay: { date: string; revenue: number }[] = [];
-  const cursor = new Date(range.from);
-  while (cursor <= range.to) {
-    const key = cursor.toISOString().slice(0, 10);
-    revenueByDay.push({ date: key, revenue: byDay.get(key) ?? 0 });
-    cursor.setDate(cursor.getDate() + 1);
+  for (let cursor = range.from; cursor <= range.to; cursor = addDays(cursor, 1)) {
+    revenueByDay.push({ date: dayKey(cursor), revenue: byDay.get(dayKey(cursor)) ?? 0 });
   }
+  const revenueByMonth = [...byMonth.entries()]
+    .map(([month, v]) => ({ month, ...v }))
+    .sort((a, b) => a.month.localeCompare(b.month));
 
   const products = [...byProduct.values()].sort((a, b) => b.revenue - a.revenue);
   const customers = [...byCustomer.values()].sort((a, b) => b.revenue - a.revenue);
@@ -129,6 +138,7 @@ export async function getFullAggregates(range: ReportRange) {
     marginRate: revenue > 0 ? (profit / revenue) * 100 : 0,
     averageTicket: invoices.length > 0 ? revenue / invoices.length : 0,
     revenueByDay,
+    revenueByMonth,
     products,
     customers,
     bestSellingProduct,
