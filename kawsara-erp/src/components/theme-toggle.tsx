@@ -6,10 +6,11 @@ import { Moon, Sun } from "lucide-react";
 export const THEME_STORAGE_KEY = "kawsara-theme";
 
 /**
- * Applique le theme avant le premier affichage (script inline dans <head>, voir app/layout.tsx) :
- * choix memorise, sinon preference du systeme. Evite un flash blanc en mode sombre.
+ * Applique le theme avant le premier affichage (script inline dans <head>, voir app/layout.tsx).
+ * Seul le choix fait avec le bouton compte : le mode sombre du telephone ou du navigateur
+ * n'influence pas le site, qui reste clair par defaut. Evite un flash blanc en mode sombre.
  */
-export const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem("${THEME_STORAGE_KEY}");if(t==="dark"||(!t&&window.matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.classList.add("dark")}}catch(e){}})();`;
+export const THEME_INIT_SCRIPT = `(function(){try{if(localStorage.getItem("${THEME_STORAGE_KEY}")==="dark"){document.documentElement.classList.add("dark")}}catch(e){}})();`;
 
 // La classe .dark sur <html> est la source de verite ; tous les boutons de la page (header,
 // menu...) sont notifies quand elle change.

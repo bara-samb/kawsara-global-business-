@@ -36,6 +36,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#1b6337",
+  // "only light" : interdit aux navigateurs (Chrome Android, Opera...) d'assombrir le site de force.
+  // Le mode sombre n'est active que par le bouton du site (voir globals.css).
+  colorScheme: "only light",
   width: "device-width",
   initialScale: 1,
 };
