@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, Home, Store, Info, Phone, LayoutDashboard } from "lucide-react";
@@ -39,15 +40,18 @@ export function MobileMenu({ items }: { items: SiteNavItem[] }) {
         <Menu className="h-6 w-6" />
       </button>
 
-      {open && (
+      {/* Portail vers <body> : le header a un backdrop-blur, qui confine les elements `fixed` a sa
+          propre hauteur. Rendu dans le header, le menu se superposait aux textes de la barre. */}
+      {open &&
+        createPortal(
         <div className="fixed inset-0 z-50">
           <button
             aria-label="Fermer le menu"
             onClick={() => setOpen(false)}
-            className="absolute inset-0 bg-black/40 animate-fade-in"
+            className="absolute inset-0 bg-black/50 animate-fade-in"
           />
-          <div className="animate-slide-in-left absolute left-0 top-0 flex h-full w-72 max-w-[85vw] flex-col bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-brand-green-100 px-4 py-4">
+          <div className="animate-slide-in-left absolute left-0 top-0 flex h-full w-72 max-w-[85vw] flex-col overflow-y-auto bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-brand-green-100 bg-brand-green-50 px-4 py-4">
               <span className="text-sm font-extrabold uppercase tracking-wide text-brand-green-800">
                 Menu
               </span>
@@ -76,8 +80,9 @@ export function MobileMenu({ items }: { items: SiteNavItem[] }) {
               })}
             </nav>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body,
+        )}
     </div>
   );
 }

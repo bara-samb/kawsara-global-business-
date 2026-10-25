@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -44,12 +45,14 @@ export function MobileSidebar({
         <Menu className="h-6 w-6" />
       </button>
 
-      {open && (
+      {/* Portail vers <body> : le menu ne depend pas du header (meme correctif que le site). */}
+      {open &&
+        createPortal(
         <div className="fixed inset-0 z-50">
           <button
             aria-label="Fermer le menu"
             onClick={() => setOpen(false)}
-            className="absolute inset-0 bg-black/40 animate-fade-in"
+            className="absolute inset-0 bg-black/50 animate-fade-in"
           />
           <div className="animate-slide-in-left absolute left-0 top-0 flex h-full w-72 max-w-[85vw] flex-col bg-brand-green-900 text-white shadow-2xl">
             <div className="flex items-center justify-between gap-2 border-b border-white/10 px-4 py-4">
@@ -87,8 +90,9 @@ export function MobileSidebar({
               </form>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body,
+        )}
     </div>
   );
 }
