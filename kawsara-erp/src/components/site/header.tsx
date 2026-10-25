@@ -24,25 +24,29 @@ export async function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-brand-green-100 bg-white/90 backdrop-blur print:hidden">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <Link href="/" className="flex items-center gap-2 shrink-0 transition-transform active:scale-95">
-          <Image
-            src="/brand/logo-mark.png"
-            alt="Kawsara Global Business"
-            width={56}
-            height={48}
-            className="h-10 w-auto sm:h-12"
-            priority
-          />
-          <span className="flex flex-col leading-tight">
-            <span className="text-base font-extrabold tracking-wide text-brand-green-800 sm:text-lg">
-              KAWSARA
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-1.5">
+          {/* Menu mobile a gauche, il s'ouvre depuis la gauche. */}
+          <MobileMenu items={isStaff ? [...NAV, staffItem] : NAV} />
+          <Link href="/" className="flex min-w-0 items-center gap-2 transition-transform active:scale-95">
+            <Image
+              src="/brand/logo-mark.png"
+              alt="Kawsara Global Business"
+              width={56}
+              height={48}
+              className="h-10 w-auto shrink-0 sm:h-12"
+              priority
+            />
+            <span className="flex flex-col leading-tight">
+              <span className="text-base font-extrabold tracking-wide text-brand-green-800 sm:text-lg">
+                KAWSARA
+              </span>
+              <span className="text-[11px] font-bold tracking-wider text-brand-gold-600 sm:text-xs">
+                GLOBAL BUSINESS
+              </span>
             </span>
-            <span className="text-[11px] font-bold tracking-wider text-brand-gold-600 sm:text-xs">
-              GLOBAL BUSINESS
-            </span>
-          </span>
-        </Link>
+          </Link>
+        </div>
 
         <nav className="hidden items-center gap-6 text-sm font-medium text-brand-green-900 md:flex">
           {NAV.map((item) => {
@@ -71,7 +75,6 @@ export async function SiteHeader() {
               Espace gestion
             </Link>
           )}
-          <MobileMenu items={isStaff ? [...NAV, staffItem] : NAV} />
         </div>
       </div>
     </header>

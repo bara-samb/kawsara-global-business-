@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { COMPANY_NINEA, COMPANY_RCCM, CONTACT_EMAIL, CONTACT_PHONE_DISPLAY } from "@/lib/site-contact";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
@@ -43,7 +44,7 @@ export default async function DebitDetailPage({
   const paymentOptions = debit.status === "EN_ATTENTE" ? await getPaymentOptions(prisma) : [];
 
   return (
-    <div className="debit-document max-w-3xl space-y-6">
+    <div className="debit-document max-w-4xl space-y-6">
       <div className="flex items-center justify-between print:hidden">
         <div>
           <h1 className="text-xl font-bold text-brand-green-900">Debit {debit.reference}</h1>
@@ -63,8 +64,8 @@ export default async function DebitDetailPage({
               <div>
                 <p className="text-lg font-extrabold text-brand-green-900">KAWSARA GLOBAL BUSINESS</p>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-green-800">Import - Export</p>
-                <p className="text-[9px] text-gray-500">RCCM : SN.DBL.2024.A.3953</p>
-                <p className="text-[9px] text-gray-500">NINEA : 011.539.064</p>
+                <p className="text-[9px] text-gray-500">RCCM : {COMPANY_RCCM}</p>
+                <p className="text-[9px] text-gray-500">NINEA : {COMPANY_NINEA}</p>
                 <p className="text-xs text-gray-500">{debit.store.name}</p>
                 <p className="text-xs text-gray-500">{debit.store.address}</p>
                 {debit.store.phone && <p className="text-xs text-gray-500">{debit.store.phone}</p>}
@@ -96,25 +97,25 @@ export default async function DebitDetailPage({
           </div>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-lg border border-gray-200">
-        <table className="min-w-full text-sm">
+        <div className="mt-6 overflow-x-auto rounded-lg border border-gray-200">
+        <table className="min-w-full text-sm sm:text-base">
           <thead className="border-b border-gray-200 text-left text-xs uppercase text-gray-500">
             <tr>
-              <th className="border-r border-gray-200 px-3 py-2">Référence</th>
-              <th className="border-r border-gray-200 px-3 py-2">Désignation</th>
-              <th className="border-r border-gray-200 px-3 py-2 text-center">Quantité</th>
-              <th className="border-r border-gray-200 px-3 py-2 text-right">Prix unitaire</th>
-              <th className="px-3 py-2 text-right">Montant</th>
+              <th className="border-r border-gray-200 px-4 py-3">Réf.</th>
+              <th className="border-r border-gray-200 px-4 py-3">Désignation</th>
+              <th className="border-r border-gray-200 px-4 py-3 text-center">Qté</th>
+              <th className="border-r border-gray-200 px-4 py-3 text-right">P.U.</th>
+              <th className="px-4 py-3 text-right">Montant</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {debit.items.map((it) => (
               <tr key={it.id}>
-                <td className="border-r border-gray-100 px-3 py-2 font-mono text-xs">{it.product.reference}</td>
-                <td className="border-r border-gray-100 px-3 py-2">{it.product.name}</td>
-                <td className="border-r border-gray-100 px-3 py-2 text-center">{it.quantity}</td>
-                <td className="border-r border-gray-100 px-3 py-2 text-right">{it.unitPrice.toLocaleString("fr-FR")}</td>
-                <td className="px-3 py-2 text-right font-medium">{(it.quantity * it.unitPrice).toLocaleString("fr-FR")}</td>
+                <td className="border-r border-gray-100 px-4 py-3 font-mono text-xs">{it.product.reference}</td>
+                <td className="border-r border-gray-100 px-4 py-3">{it.product.name}</td>
+                <td className="border-r border-gray-100 px-4 py-3 text-center">{it.quantity}</td>
+                <td className="border-r border-gray-100 whitespace-nowrap px-4 py-3 text-right">{it.unitPrice.toLocaleString("fr-FR")}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-right font-medium">{(it.quantity * it.unitPrice).toLocaleString("fr-FR")}</td>
               </tr>
             ))}
           </tbody>
@@ -134,8 +135,8 @@ export default async function DebitDetailPage({
         </div>
         <div className="mt-6 border-t border-gray-200 pt-3 text-left text-[10px] leading-4 text-gray-500 print:text-[9px]">
           <p className="font-semibold text-brand-green-900">Kawsara Global Business</p>
-          <p>RCCM : SN.DBL.2024.A.3953 — NINEA : 011.539.064</p>
-          <p>Tél. / WhatsApp : +221 77 743 29 49 — E-mail : kawsaraglobalbusiness@gmail.com</p>
+          <p>RCCM : {COMPANY_RCCM} — NINEA : {COMPANY_NINEA}</p>
+          <p>Tél. / WhatsApp : {CONTACT_PHONE_DISPLAY} — E-mail : {CONTACT_EMAIL}</p>
           <p>Touba — Sénégal</p>
         </div>
       </div>

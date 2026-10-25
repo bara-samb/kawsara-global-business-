@@ -16,6 +16,7 @@ import { SiteHeader } from "@/components/site/header";
 import { SiteFooter } from "@/components/site/footer";
 import { AddToCartButton } from "@/components/site/add-to-cart-button";
 import { ProductVisual } from "@/components/site/product-visual";
+import { ProductSearchInput } from "@/components/product-search-input";
 import { prisma } from "@/lib/prisma";
 
 function availableStock(stocks: { quantity: number; reserved: number }[]) {
@@ -25,7 +26,7 @@ function availableStock(stocks: { quantity: number; reserved: number }[]) {
 async function getHomeData() {
   try {
     const onlineProduct = { active: true, onlineEnabled: true };
-    const [products, categories] = await Promise.all([
+    const [products, categories, searchable] = await Promise.all([
       prisma.product.findMany({
         where: onlineProduct,
         take: 8,
@@ -45,10 +46,26 @@ async function getHomeData() {
           },
         },
       }),
+      // Liste legere pour les suggestions de la barre de recherche.
+      prisma.product.findMany({
+        where: onlineProduct,
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, reference: true, sellingPrice: true, category: { select: { name: true } } },
+      }),
     ]);
-    return { products, categories };
+    return {
+      products,
+      categories,
+      searchable: searchable.map((p) => ({
+        id: p.id,
+        name: p.name,
+        reference: p.reference,
+        price: p.sellingPrice,
+        category: p.category?.name,
+      })),
+    };
   } catch {
-    return { products: [], categories: [] };
+    return { products: [], categories: [], searchable: [] };
   }
 }
 
@@ -67,7 +84,7 @@ const STEPS = [
 ];
 
 export default async function HomePage() {
-  const { products, categories } = await getHomeData();
+  const { products, categories, searchable } = await getHomeData();
   const heroTiles = categories.slice(0, 4);
 
   return (
@@ -84,19 +101,19 @@ export default async function HomePage() {
           <div aria-hidden className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-brand-gold-500/20 blur-3xl" />
           <div aria-hidden className="pointer-events-none absolute -bottom-40 -left-24 h-96 w-96 rounded-full bg-brand-green-500/30 blur-3xl" />
 
-          <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 py-14 sm:px-6 md:py-20 lg:grid-cols-[1.1fr_1fr]">
-            <div className="animate-fade-in-up">
+          <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-4 py-14 sm:px-6 md:py-20 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+            <div className="animate-fade-in-up min-w-0">
               <span className="inline-flex items-center gap-2 rounded-full border border-brand-gold-400/40 bg-brand-gold-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-brand-gold-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-gold-400" />
                 Quincaillerie &amp; materiaux
               </span>
-              <h1 className="mt-5 text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl">
+              <h1 className="mt-5 text-[2rem] font-extrabold leading-[1.1] tracking-tight break-words sm:text-5xl">
                 Tout pour vos travaux,{" "}
                 <span className="bg-gradient-to-r from-brand-gold-400 to-brand-gold-500 bg-clip-text text-transparent">
                   livre chez vous
                 </span>
               </h1>
-              <p className="mt-5 max-w-lg text-lg leading-relaxed text-brand-green-100">
+              <p className="mt-5 max-w-lg text-base leading-relaxed text-brand-green-100 sm:text-lg">
                 Outillage, plomberie, electricite, peinture et quincaillerie generale.
                 Commandez en ligne en quelques minutes, sans creer de compte.
               </p>
@@ -104,14 +121,16 @@ export default async function HomePage() {
               <form action="/catalogue" role="search" className="mt-8 flex max-w-lg items-center gap-2 rounded-xl bg-white p-1.5 shadow-2xl shadow-black/20">
                 <Search className="ml-2.5 h-5 w-5 shrink-0 text-gray-400" aria-hidden />
                 <label htmlFor="home-search" className="sr-only">Rechercher un produit</label>
-                <input
+                <ProductSearchInput
                   id="home-search"
-                  name="q"
+                  products={searchable}
+                  hrefBase="/catalogue/"
                   placeholder="Ciment, perceuse, robinet..."
-                  className="min-w-0 flex-1 bg-transparent py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+                  className="w-full min-w-0 flex-1 bg-transparent py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
                 />
-                <button className="shrink-0 rounded-lg bg-brand-gold-500 px-4 py-2.5 text-sm font-bold text-brand-green-900 transition hover:bg-brand-gold-400 active:scale-95">
-                  Rechercher
+                <button aria-label="Rechercher" className="shrink-0 rounded-lg bg-brand-gold-500 px-3 py-2.5 text-sm font-bold text-brand-green-900 transition hover:bg-brand-gold-400 active:scale-95 sm:px-4">
+                  <Search className="h-4 w-4 sm:hidden" aria-hidden />
+                  <span className="hidden sm:inline">Rechercher</span>
                 </button>
               </form>
 
@@ -129,7 +148,7 @@ export default async function HomePage() {
 
             {heroTiles.length > 0 && (
               <div className="animate-scale-in relative mx-auto w-full max-w-md lg:max-w-none">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   {heroTiles.map((c, i) => {
                     const image = c.products[0]?.images[0]?.url;
                     return (
@@ -139,7 +158,7 @@ export default async function HomePage() {
                         className={`group relative aspect-[4/3] overflow-hidden rounded-2xl shadow-xl ring-1 ring-white/10 transition duration-300 hover:ring-2 hover:ring-brand-gold-400 ${i % 2 === 1 ? "translate-y-6" : ""}`}
                       >
                         <ProductVisual src={image} alt="" sizes="(min-width: 1024px) 260px, 45vw" zoomOnHover />
-                        <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-bold text-brand-green-900 shadow">
+                        <span className="absolute left-2 top-2 max-w-[calc(100%-1rem)] truncate rounded-full bg-white/95 px-2.5 py-1 text-xs font-bold text-brand-green-900 shadow sm:left-3 sm:top-3">
                           {c.name}
                         </span>
                       </Link>
@@ -181,7 +200,7 @@ export default async function HomePage() {
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
             </div>
-            <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
               {categories.map((c) => {
                 const image = c.products[0]?.images[0]?.url;
                 return (
@@ -315,11 +334,11 @@ export default async function HomePage() {
 
         {/* ---------- Contact ---------- */}
         <section className="px-4 pb-16 sm:px-6">
-          <div className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl bg-gradient-to-br from-brand-gold-500 to-brand-gold-400 px-6 py-10 sm:px-12">
+          <div className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl bg-gradient-to-br from-brand-gold-500 to-brand-gold-400 px-5 py-8 sm:px-12 sm:py-10">
             <div aria-hidden className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/20 blur-2xl" />
             <div className="relative flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
               <div>
-                <h2 className="text-2xl font-extrabold text-brand-green-900">Besoin d&apos;un conseil ou d&apos;un devis ?</h2>
+                <h2 className="text-xl font-extrabold text-brand-green-900 sm:text-2xl">Besoin d&apos;un conseil ou d&apos;un devis ?</h2>
                 <p className="mt-1 max-w-xl text-brand-green-900/80">
                   Grosse quantite, produit introuvable, question technique : notre equipe vous repond.
                 </p>

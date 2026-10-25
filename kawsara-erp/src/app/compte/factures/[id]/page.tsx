@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { COMPANY_NINEA, COMPANY_RCCM, CONTACT_EMAIL, CONTACT_PHONE_DISPLAY } from "@/lib/site-contact";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PAYMENT_METHOD_LABELS } from "@/lib/payment-options";
@@ -41,7 +42,7 @@ export default async function MaFactureDetailPage({ params }: { params: Promise<
   const isPaid = invoice.status === "PAYEE" && invoice.remainingAmount === 0;
 
   return (
-    <div className="invoice-document mx-auto max-w-3xl space-y-6">
+    <div className="invoice-document mx-auto max-w-4xl space-y-6">
       <div className="flex items-center justify-between print:hidden">
         <h1 className="text-xl font-bold text-brand-green-900">Facture {invoice.reference}</h1>
         {isPaid ? (
@@ -59,8 +60,8 @@ export default async function MaFactureDetailPage({ params }: { params: Promise<
             <div>
               <p className="text-lg font-extrabold text-brand-green-900">KAWSARA GLOBAL BUSINESS</p>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-green-800">Import - Export</p>
-              <p className="mt-1 text-[9px] text-gray-500">RCCM : SN.DBL.2024.A.3.963</p>
-              <p className="text-[9px] text-gray-500">NINEA : 011.539.064</p>
+              <p className="mt-1 text-[9px] text-gray-500">RCCM : {COMPANY_RCCM}</p>
+              <p className="text-[9px] text-gray-500">NINEA : {COMPANY_NINEA}</p>
               <p className="text-xs text-gray-500">{invoice.store.name}</p>
               {invoice.store.phone && <p className="text-xs text-gray-500">{invoice.store.phone}</p>}
             </div>
@@ -89,25 +90,25 @@ export default async function MaFactureDetailPage({ params }: { params: Promise<
           </div>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-lg border border-gray-200">
-        <table className="min-w-full text-sm">
+        <div className="mt-6 overflow-x-auto rounded-lg border border-gray-200">
+        <table className="min-w-full text-sm sm:text-base">
           <thead className="border-b border-gray-200 text-left text-xs uppercase text-gray-500">
             <tr>
-              <th className="border-r border-gray-200 px-3 py-2">Référence</th>
-              <th className="border-r border-gray-200 px-3 py-2">Désignation</th>
-              <th className="border-r border-gray-200 px-3 py-2 text-center">Quantité</th>
-              <th className="border-r border-gray-200 px-3 py-2 text-right">Prix unitaire</th>
-              <th className="px-3 py-2 text-right">Montant HT</th>
+              <th className="border-r border-gray-200 px-4 py-3">Réf.</th>
+              <th className="border-r border-gray-200 px-4 py-3">Désignation</th>
+              <th className="border-r border-gray-200 px-4 py-3 text-center">Qté</th>
+              <th className="border-r border-gray-200 px-4 py-3 text-right">P.U.</th>
+              <th className="px-4 py-3 text-right">Mont. HT</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {invoice.items.map((it) => (
               <tr key={it.id}>
-                <td className="border-r border-gray-100 px-3 py-2 font-mono text-xs">{it.product.reference}</td>
-                <td className="border-r border-gray-100 px-3 py-2">{it.product.name}</td>
-                <td className="border-r border-gray-100 px-3 py-2 text-center">{it.quantity}</td>
-                <td className="border-r border-gray-100 px-3 py-2 text-right">{it.unitPrice.toLocaleString("fr-FR")}</td>
-                <td className="px-3 py-2 text-right font-medium">{it.total.toLocaleString("fr-FR")}</td>
+                <td className="border-r border-gray-100 px-4 py-3 font-mono text-xs">{it.product.reference}</td>
+                <td className="border-r border-gray-100 px-4 py-3">{it.product.name}</td>
+                <td className="border-r border-gray-100 px-4 py-3 text-center">{it.quantity}</td>
+                <td className="border-r border-gray-100 whitespace-nowrap px-4 py-3 text-right">{it.unitPrice.toLocaleString("fr-FR")}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-right font-medium">{it.total.toLocaleString("fr-FR")}</td>
               </tr>
             ))}
           </tbody>
@@ -117,6 +118,12 @@ export default async function MaFactureDetailPage({ params }: { params: Promise<
         <div className="mt-6 flex justify-end">
           <div className="w-full rounded-lg border border-brand-green-100 bg-brand-green-50/40 px-3 py-2 sm:w-72">
             <div className="space-y-0.5 text-sm leading-5">
+            {invoice.discount > 0 && (
+              <>
+                <div className="flex justify-between"><span className="text-gray-500">Sous-total</span><span>{invoice.subtotal.toLocaleString("fr-FR")} FCFA</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Remise</span><span>- {invoice.discount.toLocaleString("fr-FR")} FCFA</span></div>
+              </>
+            )}
             <div className="flex justify-between border-t border-gray-200 pt-1 text-base font-bold text-brand-green-900"><span>Total</span><span>{invoice.total.toLocaleString("fr-FR")} FCFA</span></div>
             <div className="flex justify-between"><span className="text-gray-500">Paye</span><span>{invoice.paidAmount.toLocaleString("fr-FR")} FCFA</span></div>
             <div className="flex justify-between font-semibold text-red-600"><span>Reste a payer</span><span>{invoice.remainingAmount.toLocaleString("fr-FR")} FCFA</span></div>
@@ -144,8 +151,8 @@ export default async function MaFactureDetailPage({ params }: { params: Promise<
 
         <div className="mt-6 border-t border-gray-200 pt-3 text-left text-[10px] leading-4 text-gray-500 print:text-[9px]">
           <p className="font-semibold text-brand-green-900">Kawsara Global Business</p>
-          <p>RCCM : SN.DBL.2024.A.3953 — NINEA : 011.539.064</p>
-          <p>Tél. / WhatsApp : +221 77 743 29 49 — E-mail : kawsaraglobalbusiness@gmail.com</p>
+          <p>RCCM : {COMPANY_RCCM} — NINEA : {COMPANY_NINEA}</p>
+          <p>Tél. / WhatsApp : {CONTACT_PHONE_DISPLAY} — E-mail : {CONTACT_EMAIL}</p>
           <p>Touba — Sénégal</p>
         </div>
       </div>

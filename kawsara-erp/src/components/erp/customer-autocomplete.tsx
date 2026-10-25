@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { SuggestInput } from "@/components/suggest-input";
 
 type Customer = {
   id: string;
@@ -13,6 +14,16 @@ export function CustomerAutocomplete({ customers }: { customers: Customer[] }) {
   const [name, setName] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [phone, setPhone] = useState("");
+
+  const suggestions = useMemo(
+    () =>
+      customers.map((customer) => ({
+        id: customer.id,
+        label: customer.name,
+        detail: [customer.reference, customer.phone].filter(Boolean).join(" · "),
+      })),
+    [customers],
+  );
 
   function handleChange(value: string) {
     setName(value);
@@ -28,14 +39,20 @@ export function CustomerAutocomplete({ customers }: { customers: Customer[] }) {
       <label className="text-sm font-medium text-brand-green-900" htmlFor="sale-customer-name">
         Client (optionnel)
       </label>
-      <input
+      <SuggestInput
         id="sale-customer-name"
         name="customerName"
         value={name}
-        onChange={(event) => handleChange(event.target.value)}
-        list="sale-customer-suggestions"
+        onChange={handleChange}
+        onSelect={(s) => {
+          const customer = customers.find((c) => c.id === s.id);
+          setName(s.label);
+          setCustomerId(s.id);
+          if (customer?.phone) setPhone(customer.phone);
+        }}
+        suggestions={suggestions}
         placeholder="Nom complet du client..."
-        autoComplete="off"
+        emptyText="Aucun client trouve : le nom saisi sera utilise"
         className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
       />
       <input type="hidden" name="customerId" value={customerId} />
@@ -52,11 +69,6 @@ export function CustomerAutocomplete({ customers }: { customers: Customer[] }) {
         autoComplete="tel"
         className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
       />
-      <datalist id="sale-customer-suggestions">
-        {customers.map((customer) => (
-          <option key={customer.id} value={`${customer.name} (${customer.reference})`} />
-        ))}
-      </datalist>
       <p className="mt-1 text-xs text-gray-500">
         Choisissez un client proposé ou saisissez un nom complet.
       </p>

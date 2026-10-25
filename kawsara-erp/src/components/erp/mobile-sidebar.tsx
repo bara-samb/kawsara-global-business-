@@ -51,7 +51,7 @@ export function MobileSidebar({
             onClick={() => setOpen(false)}
             className="absolute inset-0 bg-black/40 animate-fade-in"
           />
-          <div className="animate-slide-in-right absolute right-0 top-0 flex h-full w-72 max-w-[85vw] flex-col bg-brand-green-900 text-white shadow-2xl">
+          <div className="animate-slide-in-left absolute left-0 top-0 flex h-full w-72 max-w-[85vw] flex-col bg-brand-green-900 text-white shadow-2xl">
             <div className="flex items-center justify-between gap-2 border-b border-white/10 px-4 py-4">
               <div className="flex items-center gap-2">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-2 ring-brand-gold-400/60">

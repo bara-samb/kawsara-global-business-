@@ -69,8 +69,8 @@ export default async function CommandeEnLigneDetailPage({ params }: { params: Pr
           <thead className="bg-gray-50 text-left text-xs font-semibold uppercase text-gray-500">
             <tr>
               <th className="px-4 py-3">Produit</th>
-              <th className="px-4 py-3">Quantite</th>
-              <th className="px-4 py-3">Prix unitaire</th>
+              <th className="px-4 py-3">Qté</th>
+              <th className="px-4 py-3">P.U.</th>
               <th className="px-4 py-3">Total</th>
             </tr>
           </thead>

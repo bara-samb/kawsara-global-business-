@@ -5,7 +5,9 @@ import { SiteFooter } from "@/components/site/footer";
 import { AddToCartButton } from "@/components/site/add-to-cart-button";
 import { ProductVisual } from "@/components/site/product-visual";
 import { CategoryFilter } from "@/components/site/category-filter";
+import { ProductSearchInput } from "@/components/product-search-input";
 import { prisma } from "@/lib/prisma";
+import { matchesQuery } from "@/lib/search";
 
 function availableStock(stocks: { quantity: number; reserved: number }[]) {
   return stocks.reduce((sum, s) => sum + Math.max(0, s.quantity - s.reserved), 0);
@@ -13,22 +15,31 @@ function availableStock(stocks: { quantity: number; reserved: number }[]) {
 
 async function getCatalogue(q?: string, categoryId?: string) {
   try {
-    const [products, categories] = await Promise.all([
+    const [allProducts, categories] = await Promise.all([
       prisma.product.findMany({
-        where: {
-          active: true,
-          onlineEnabled: true,
-          ...(categoryId ? { categoryId } : {}),
-          ...(q ? { name: { contains: q } } : {}),
-        },
+        where: { active: true, onlineEnabled: true },
         orderBy: { name: "asc" },
         include: { category: true, images: { take: 1, orderBy: { position: "asc" } }, stocks: true },
       }),
       prisma.category.findMany({ orderBy: { name: "asc" } }),
     ]);
-    return { products, categories };
+    // Filtrage en JS (voir lib/search.ts) : insensible a la casse et aux accents, porte aussi sur
+    // la reference et la categorie.
+    const products = allProducts.filter(
+      (p) =>
+        (!categoryId || p.categoryId === categoryId) &&
+        (!q || matchesQuery([p.name, p.reference, p.category?.name], q)),
+    );
+    const searchable = allProducts.map((p) => ({
+      id: p.id,
+      name: p.name,
+      reference: p.reference,
+      price: p.sellingPrice,
+      category: p.category?.name,
+    }));
+    return { products, categories, searchable };
   } catch {
-    return { products: [], categories: [] };
+    return { products: [], categories: [], searchable: [] };
   }
 }
 
@@ -51,7 +62,7 @@ export default async function CataloguePage({
   searchParams: Promise<{ q?: string; categorie?: string }>;
 }) {
   const { q, categorie } = await searchParams;
-  const { products, categories } = await getCatalogue(q, categorie);
+  const { products, categories, searchable } = await getCatalogue(q, categorie);
   const groups = groupByCategory(products);
 
   return (
@@ -69,14 +80,17 @@ export default async function CataloguePage({
 
         <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
           <form className="flex flex-wrap items-end gap-3" action="/catalogue">
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-xs font-medium text-brand-green-900">Recherche</label>
+            <div className="min-w-0 flex-1 basis-full sm:basis-auto sm:min-w-[200px]">
+              <label htmlFor="catalogue-search" className="text-xs font-medium text-brand-green-900">Recherche</label>
               <div className="relative mt-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <input
-                  name="q"
+                <ProductSearchInput
+                  key={q ?? ""}
+                  id="catalogue-search"
+                  products={searchable}
+                  hrefBase="/catalogue/"
                   defaultValue={q}
-                  placeholder="Nom du produit..."
+                  placeholder="Nom ou référence du produit..."
                   className="w-full rounded-md border border-gray-300 py-2 pl-9 pr-3 text-sm transition focus:border-brand-green-500 focus:outline-none focus:ring-2 focus:ring-brand-green-100"
                 />
               </div>

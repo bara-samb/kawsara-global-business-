@@ -116,6 +116,15 @@ body {
   }
 }
 
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
 @keyframes pop {
   0% {
     transform: scale(1);
@@ -144,6 +153,10 @@ body {
   animation: slide-in-right 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+.animate-slide-in-left {
+  animation: slide-in-left 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 .animate-pop {
   animation: pop 0.35s ease-out;
 }
@@ -153,6 +166,7 @@ body {
   .animate-fade-in-up,
   .animate-scale-in,
   .animate-slide-in-right,
+  .animate-slide-in-left,
   .animate-pop {
     animation: none;
   }

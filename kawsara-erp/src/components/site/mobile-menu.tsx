@@ -46,7 +46,7 @@ export function MobileMenu({ items }: { items: SiteNavItem[] }) {
             onClick={() => setOpen(false)}
             className="absolute inset-0 bg-black/40 animate-fade-in"
           />
-          <div className="animate-slide-in-right absolute right-0 top-0 flex h-full w-72 max-w-[85vw] flex-col bg-white shadow-2xl">
+          <div className="animate-slide-in-left absolute left-0 top-0 flex h-full w-72 max-w-[85vw] flex-col bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-brand-green-100 px-4 py-4">
               <span className="text-sm font-extrabold uppercase tracking-wide text-brand-green-800">
                 Menu

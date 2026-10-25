@@ -3,33 +3,40 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/lib/require-permission";
+import { matchesQuery } from "@/lib/search";
+import { ProductSearchInput } from "@/components/product-search-input";
 
 export default async function ProduitsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cree?: string; supprime?: string }>;
+  searchParams: Promise<{ cree?: string; supprime?: string; q?: string }>;
 }) {
   await requirePagePermission("product.read");
-  const { cree, supprime } = await searchParams;
+  const { cree, supprime, q } = await searchParams;
   const session = await auth();
   const role = session!.user.role;
   // Le prix d'achat revele la marge : reserve a ceux qui gerent les produits ou voient les benefices.
   const showPurchasePrice = can(role, "product.update") || can(role, "profit.view");
 
-  const products = await prisma.product.findMany({
+  const allProducts = await prisma.product.findMany({
     orderBy: { createdAt: "desc" },
     include: {
       category: true,
       stocks: true,
     },
   });
+  const products = q
+    ? allProducts.filter((p) => matchesQuery([p.name, p.reference, p.category?.name], q))
+    : allProducts;
 
   return (
     <div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-brand-green-900">Produits</h1>
-          <p className="text-sm text-gray-500">{products.length} produit(s)</p>
+          <p className="text-sm text-gray-500">
+            {q ? `${products.length} resultat(s) sur ${allProducts.length}` : `${products.length} produit(s)`}
+          </p>
         </div>
         {can(role, "product.create") && (
           <Link
@@ -51,6 +58,31 @@ export default async function ProduitsPage({
           Le produit « {supprime} » a ete definitivement supprime.
         </p>
       )}
+
+      <form action="/erp/produits" className="mt-4 flex max-w-xl gap-2">
+        <ProductSearchInput
+          key={q ?? ""}
+          products={allProducts.map((p) => ({
+            id: p.id,
+            name: p.name,
+            reference: p.reference,
+            price: p.sellingPrice,
+            category: p.category?.name,
+          }))}
+          hrefBase="/erp/produits/"
+          defaultValue={q}
+          placeholder="Rechercher un produit (nom, reference, categorie)..."
+          className="w-full min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+        />
+        <button className="shrink-0 rounded-md bg-brand-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-green-800">
+          Rechercher
+        </button>
+        {q && (
+          <Link href="/erp/produits" className="self-center text-sm font-semibold text-brand-green-700 hover:text-brand-gold-600">
+            Effacer
+          </Link>
+        )}
+      </form>
 
       <div className="mt-6 overflow-x-auto rounded-xl border border-gray-200 bg-white">
         <table className="min-w-full divide-y divide-gray-200 text-sm text-brand-green-900">
